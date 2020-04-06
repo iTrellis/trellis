@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package proto;
+
+enum RegistryType {
+    LOCAL = 0;
+    ETCD = 1;
+}
+
+// BaseService 基础服务信息
+message BaseService {
+    string name = 1;
+    string version = 2;
+}
+
+message Service {
+    RegistryType type = 1;
+    BaseService BaseService = 2;
+    string Endpoint = 3;
+    map<string, string> metadata = 4;
+}
