@@ -11,7 +11,7 @@ import (
 	"github.com/go-trellis/config"
 )
 
-func LoadPprof(router *gin.Engine, conf config.Config) {
+func LoadPprof(engine *gin.Engine, conf config.Config) {
 
 	if conf == nil {
 		return
@@ -21,11 +21,11 @@ func LoadPprof(router *gin.Engine, conf config.Config) {
 		return
 	}
 
-	pprof.Register(router)
+	pprof.Register(engine)
 	runtime.SetBlockProfileRate(int(conf.GetInt("block-profile-rate", 0)))
 }
 
-func LoadCors(router *gin.Engine, conf config.Config) {
+func LoadCors(engine *gin.Engine, conf config.Config) {
 
 	var corsConf cors.Config
 	if conf == nil {
@@ -35,7 +35,6 @@ func LoadCors(router *gin.Engine, conf config.Config) {
 		corsConf.AllowOriginFunc = func(origin string) bool {
 			return true
 		}
-
 	} else {
 		corsConf = cors.Config{
 			AllowOrigins:     conf.GetStringList("allow-origins"),
@@ -49,9 +48,9 @@ func LoadCors(router *gin.Engine, conf config.Config) {
 		corsConf.AllowOriginFunc = wildcardMatchFunc(corsConf.AllowOrigins)
 	}
 
-	corsConf.AllowHeaders = append(corsConf.AllowHeaders, "X-Api", "X-Api-Batch", "X-Api-Timeout")
+	corsConf.AllowHeaders = append(corsConf.AllowHeaders, "X-Api", "X-Api-Timeout")
 
-	router.Use(cors.New(corsConf))
+	engine.Use(cors.New(corsConf))
 }
 
 type wildcard struct {

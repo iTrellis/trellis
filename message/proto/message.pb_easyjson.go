@@ -36,18 +36,14 @@ func easyjson52bdc5a7DecodeGithubComGoTrellisTrellisMessageProto(in *jlexer.Lexe
 			continue
 		}
 		switch key {
-		case "ID":
-			out.ID = string(in.String())
-		case "server":
-			if in.IsNull() {
-				in.Skip()
-				out.Server = nil
-			} else {
-				if out.Server == nil {
-					out.Server = new(BaseService)
-				}
-				easyjson52bdc5a7DecodeGithubComGoTrellisTrellisMessageProto1(in, out.Server)
-			}
+		case "trace_id":
+			out.TraceId = string(in.String())
+		case "id":
+			out.Id = string(in.String())
+		case "service_name":
+			out.ServiceName = string(in.String())
+		case "service_version":
+			out.ServiceVersion = string(in.String())
 		case "topic":
 			out.Topic = string(in.String())
 		case "header":
@@ -93,21 +89,41 @@ func easyjson52bdc5a7EncodeGithubComGoTrellisTrellisMessageProto(out *jwriter.Wr
 	out.RawByte('{')
 	first := true
 	_ = first
-	if in.ID != "" {
-		const prefix string = ",\"ID\":"
+	if in.TraceId != "" {
+		const prefix string = ",\"trace_id\":"
 		first = false
 		out.RawString(prefix[1:])
-		out.String(string(in.ID))
+		out.String(string(in.TraceId))
 	}
-	if in.Server != nil {
-		const prefix string = ",\"server\":"
+	if in.Id != "" {
+		const prefix string = ",\"id\":"
 		if first {
 			first = false
 			out.RawString(prefix[1:])
 		} else {
 			out.RawString(prefix)
 		}
-		easyjson52bdc5a7EncodeGithubComGoTrellisTrellisMessageProto1(out, *in.Server)
+		out.String(string(in.Id))
+	}
+	if in.ServiceName != "" {
+		const prefix string = ",\"service_name\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.ServiceName))
+	}
+	if in.ServiceVersion != "" {
+		const prefix string = ",\"service_version\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.ServiceVersion))
 	}
 	if in.Topic != "" {
 		const prefix string = ",\"topic\":"
@@ -188,59 +204,4 @@ func (v *Payload) UnmarshalJSON(data []byte) error {
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *Payload) UnmarshalEasyJSON(l *jlexer.Lexer) {
 	easyjson52bdc5a7DecodeGithubComGoTrellisTrellisMessageProto(l, v)
-}
-func easyjson52bdc5a7DecodeGithubComGoTrellisTrellisMessageProto1(in *jlexer.Lexer, out *BaseService) {
-	isTopLevel := in.IsStart()
-	if in.IsNull() {
-		if isTopLevel {
-			in.Consumed()
-		}
-		in.Skip()
-		return
-	}
-	in.Delim('{')
-	for !in.IsDelim('}') {
-		key := in.UnsafeString()
-		in.WantColon()
-		if in.IsNull() {
-			in.Skip()
-			in.WantComma()
-			continue
-		}
-		switch key {
-		case "name":
-			out.Name = string(in.String())
-		case "version":
-			out.Version = string(in.String())
-		default:
-			in.SkipRecursive()
-		}
-		in.WantComma()
-	}
-	in.Delim('}')
-	if isTopLevel {
-		in.Consumed()
-	}
-}
-func easyjson52bdc5a7EncodeGithubComGoTrellisTrellisMessageProto1(out *jwriter.Writer, in BaseService) {
-	out.RawByte('{')
-	first := true
-	_ = first
-	if in.Name != "" {
-		const prefix string = ",\"name\":"
-		first = false
-		out.RawString(prefix[1:])
-		out.String(string(in.Name))
-	}
-	if in.Version != "" {
-		const prefix string = ",\"version\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
-		out.String(string(in.Version))
-	}
-	out.RawByte('}')
 }

@@ -20,12 +20,10 @@ type Request struct {
 }
 
 func (p *Request) initMessage() {
-	p.Message.Payload = &proto.Payload{
-		ID:     uuid.New().String(),
+	p.Message.Payload = proto.Payload{
+		Id:     uuid.New().String(),
 		Header: make(map[string]string),
-		Server: &proto.BaseService{},
 	}
-
 }
 
 // NewRequest 新生成请求体
@@ -37,13 +35,13 @@ func NewRequest(opts ...RequestOptionFunc) (req *Request, err error) {
 		o(r)
 	}
 
-	r.codec, err = codec.GetCodec(r.Payload.ContentType)
+	r.Codec, err = codec.GetCodec(r.Payload.ContentType)
 	if err != nil {
 		return
 	}
 
 	if r.body != nil {
-		r.Payload.Body, err = r.codec.Marshal(r.body)
+		r.Payload.Body, err = r.Codec.Marshal(r.body)
 		if err != nil {
 			return nil, err
 		}
@@ -52,82 +50,83 @@ func NewRequest(opts ...RequestOptionFunc) (req *Request, err error) {
 	return r, nil
 }
 
-// RequestServer 请求的服务
-func RequestServer(server string) RequestOptionFunc {
-	return func(r *Request) {
-		r.Payload.Server.Name = server
-	}
+// // RequestServer 请求的服务
+// func RequestServer(server string) RequestOptionFunc {
+// 	return func(r *Request) {
+// 		r.Payload.Server.Name = server
+// 	}
+// }
+
+// // RequestVersion 请求的版本号
+// func RequestVersion(version string) RequestOptionFunc {
+// 	return func(r *Request) {
+// 		r.Payload.Server.Version = version
+// 	}
+// }
+
+// // RequestEndpoint 请求的端点
+// func RequestEndpoint(endpoint string) RequestOptionFunc {
+// 	return func(r *Request) {
+// 		r.Endpoint = endpoint
+// 	}
+// }
+
+// // RequestMethod 请求的方法
+// func RequestMethod(method string) RequestOptionFunc {
+// 	return func(r *Request) {
+// 		r.Method = method
+// 	}
+// }
+
+// // RequestTopic 请求的方法
+// func RequestTopic(topic string) RequestOptionFunc {
+// 	return func(r *Request) {
+// 		r.Payload.Topic = topic
+// 	}
+// }
+
+// // RequestContentType 请求头类型
+// func RequestContentType(contentType string) RequestOptionFunc {
+// 	return func(r *Request) {
+// 		r.Payload.ContentType = contentType
+// 	}
+// }
+
+// // RequestPayload 请求体内容
+// func RequestPayload(body interface{}) RequestOptionFunc {
+// 	return func(r *Request) {
+// 		r.body = body
+// 	}
+// }
+
+// // RequestHeader 请求头信息
+// func RequestHeader(header map[string]string) RequestOptionFunc {
+// 	return func(r *Request) {
+// 		r.Payload.Header = header
+// 	}
+// }
+
+// func (p *Request) ID() string {
+// 	return p.Payload.GetID()
+// }
+
+// Service 获取Service
+func (p *Request) Service() *proto.BaseService {
+	return &proto.BaseService{Name: p.ServiceName, Version: p.ServiceVersion}
 }
 
-// RequestVersion 请求的版本号
-func RequestVersion(version string) RequestOptionFunc {
-	return func(r *Request) {
-		r.Payload.Server.Version = version
-	}
-}
+// func (p *Request) Read() ([]byte, error) {
+// 	return p.codec.Marshal(p.Payload)
+// }
 
-// RequestEndpoint 请求的端点
-func RequestEndpoint(endpoint string) RequestOptionFunc {
-	return func(r *Request) {
-		r.Endpoint = endpoint
-	}
-}
+// func (p *Request) Topic() string {
+// 	return p.Payload.Topic
+// }
 
-// RequestMethod 请求的方法
-func RequestMethod(method string) RequestOptionFunc {
-	return func(r *Request) {
-		r.Method = method
-	}
-}
+// func (p *Request) SetHeader(key, value string) {
+// 	p.Payload.Header[key] = value
+// }
 
-// RequestTopic 请求的方法
-func RequestTopic(topic string) RequestOptionFunc {
-	return func(r *Request) {
-		r.Payload.Topic = topic
-	}
-}
-
-// RequestContentType 请求头类型
-func RequestContentType(contentType string) RequestOptionFunc {
-	return func(r *Request) {
-		r.Payload.ContentType = contentType
-	}
-}
-
-// RequestPayload 请求体内容
-func RequestPayload(body interface{}) RequestOptionFunc {
-	return func(r *Request) {
-		r.body = body
-	}
-}
-
-// RequestHeader 请求头信息
-func RequestHeader(header map[string]string) RequestOptionFunc {
-	return func(r *Request) {
-		r.Payload.Header = header
-	}
-}
-
-func (p *Request) ID() string {
-	return p.Payload.GetID()
-}
-
-func (p *Request) Server() *proto.BaseService {
-	return p.Payload.GetServer()
-}
-
-func (p *Request) Read() ([]byte, error) {
-	return p.codec.Marshal(p.Payload)
-}
-
-func (p *Request) Topic() string {
-	return p.Payload.Topic
-}
-
-func (p *Request) SetHeader(key, value string) {
-	p.Payload.Header[key] = value
-}
-
-func (p *Request) GetMessage() *Message {
-	return p.Message
-}
+// func (p *Request) GetMessage() *Message {
+// 	return p.Message
+// }

@@ -1,14 +1,14 @@
 syntax = "proto3";
 
-
 package proto;
-import "service.proto";
 
 message Payload {
-    string ID = 1;
-    BaseService server = 2;
-    string topic = 4;
-    map<string, string> header = 5;
-    string content_type = 6;
-    bytes body = 7;
+    string trace_id = 1;
+    string id = 2;
+    string service_name = 3;
+    string service_version = 4;
+    string topic = 5;
+    map<string, string> header = 6;
+    string content_type = 7;
+    bytes body = 8;
 }

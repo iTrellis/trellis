@@ -6,19 +6,23 @@ import (
 )
 
 type Message struct {
-	*proto.Payload
+	proto.Payload `json:",inline"`
 
-	codec codec.Codec
+	Codec codec.Codec `json:"codec"`
 }
 
 func (p *Message) SetBody(obj interface{}) (err error) {
 
-	p.Payload.Body, err = p.codec.Marshal(obj)
+	p.Payload.Body, err = p.Codec.Marshal(obj)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (p *Message) GetService() *proto.BaseService {
+	return &proto.BaseService{Name: p.ServiceName, Version: p.ServiceVersion}
 }
 
 func (p *Message) ToObject(obj interface{}) error {
@@ -29,36 +33,3 @@ func (p *Message) ToObject(obj interface{}) error {
 
 	return codec.UnmarshalObject(p.Payload.GetBody(), obj)
 }
-
-// // Request is a synchronous request interface
-// type Request interface {
-// 	ID() string
-// 	// Service name requested
-// 	Service() string
-// 	// Service version requested
-// 	Version() string
-// 	// The action requested
-// 	Method() string
-// 	// The handler's name in service
-// 	Topic() string
-// 	// Endpoint name requested
-// 	Endpoint() string
-// 	// The encoded message stream
-// 	Codec() codec.Codec
-// 	// Read the undecoded request body
-// 	Read() ([]byte, error)
-// 	// Set Request header
-// 	SetHeader(string, string)
-// 	Message() *Message
-// }
-
-// // Response 服务端返回的内容
-// type Response interface {
-// 	Code() uint64
-// 	Codec() codec.Codec
-// 	// Get the header value by key
-// 	GetHeader(string) string
-// 	GetHeaders() map[string]string
-
-// 	ToObject(interface{}) error
-// }

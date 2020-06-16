@@ -11,9 +11,6 @@ type jsonCodec struct{}
 func (*jsonCodec) Unmarshal(bytes []byte) (*proto.Payload, error) {
 	resp := &proto.Payload{}
 	err := resp.UnmarshalJSON(bytes)
-	if err != nil {
-		return nil, err
-	}
 	return resp, err
 }
 

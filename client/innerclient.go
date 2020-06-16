@@ -1,16 +1,15 @@
 package client
 
 import (
-	"github.com/go-trellis/errors"
 	"github.com/go-trellis/trellis/message"
 	"github.com/go-trellis/trellis/runner"
 )
 
-// type InnerClient struct{}
+// // type InnerClient struct{}
 
-func InnerCall(req *message.Request) errors.ErrorCode {
+func InnerCall(req *message.Request) error {
 
-	worker, err := runner.GetWorker(req.Server())
+	worker, err := runner.GetWorker(req.Service())
 
 	if err != nil {
 		return err
@@ -18,11 +17,3 @@ func InnerCall(req *message.Request) errors.ErrorCode {
 
 	return worker.Call(req.Message)
 }
-
-// func (*InnerClient) String() string {
-// 	return "inner"
-// }
-
-// func NewInnerClient() Client {
-// 	return (*InnerClient)(nil)
-// }
