@@ -1,0 +1,12 @@
+services:
+  serviceA:
+    name: "serviceA"
+    version: "1"
+  serviceB:
+    name: serviceB
+    version: "2"
+  api:
+    name: trellis-api
+    debug: true
+    http:
+      path: /

@@ -10,7 +10,7 @@ type jsonCodec struct{}
 
 func (*jsonCodec) Unmarshal(bytes []byte) (*proto.Payload, error) {
 	resp := &proto.Payload{}
-	err := resp.UnmarshalJSON(bytes)
+	err := json.Unmarshal(bytes, resp)
 	return resp, err
 }
 
@@ -19,10 +19,6 @@ func (*jsonCodec) UnmarshalObject(bytes []byte, obj interface{}) error {
 }
 
 func (*jsonCodec) Marshal(body interface{}) ([]byte, error) {
-	switch t := body.(type) {
-	case *proto.Payload:
-		return t.MarshalJSON()
-	}
 	return json.Marshal(body)
 }
 

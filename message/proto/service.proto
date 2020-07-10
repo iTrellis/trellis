@@ -1,6 +1,9 @@
 syntax = "proto3";
 
+import "message.proto";
+
 package proto;
+
 
 enum RegistryType {
     LOCAL = 0;
@@ -18,4 +21,9 @@ message Service {
     BaseService BaseService = 2;
     string Endpoint = 3;
     map<string, string> metadata = 4;
+}
+
+
+service GrpcServcie {
+    rpc Call (Payload) returns (Payload);
 }

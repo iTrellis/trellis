@@ -91,21 +91,16 @@ func GetWorker(base *proto.BaseService) (*Worker, error) {
 }
 
 func (p *Runner) registServices() error {
-	servicesConf := p.conf.GetMap("services")
+	servicesConf := p.conf.GetValuesConfig("project.services")
 	if servicesConf == nil {
-		return nil
+		return errors.New("services nil")
 	}
 
-	for _, name := range servicesConf.Keys() {
-		fmt.Println(name)
-		serviceConf := p.conf.GetValuesConfig("services." + name)
-		if serviceConf == nil {
-			continue
-		}
-
+	for _, name := range servicesConf.GetKeys() {
+		serviceConf := servicesConf.GetValuesConfig(fmt.Sprintf("%s.options", name))
 		err := p.newWorker(
-			WorkerService(serviceConf.GetString("name", name), service.Config(serviceConf)),
-			WorkerVersion(serviceConf.GetString("version", "v1")))
+			WorkerService(name, service.Config(serviceConf)),
+			WorkerVersion(servicesConf.GetString(name+".version")))
 
 		if err != nil {
 			return err
@@ -113,6 +108,10 @@ func (p *Runner) registServices() error {
 	}
 
 	return nil
+}
+
+func (p *Runner) checkRegistry() {
+
 }
 
 // RevokeWorker 注销worker

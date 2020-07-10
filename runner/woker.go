@@ -107,9 +107,5 @@ func (p *Worker) Call(msg *message.Message) error {
 	if hFunc == nil {
 		return errors.New("not found handler")
 	}
-	err := hFunc(msg)
-	if err != nil {
-		return err
-	}
-	return nil
+	return hFunc(msg)
 }

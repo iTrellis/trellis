@@ -1,0 +1,30 @@
+project:
+    services:
+        trellis-trans-api:
+            version: v1
+            options:
+                debug: ""
+                http:
+                    path: /
+        serviceA:
+            version: v1
+            options:
+                key1: a
+                key2: b
+            registry: etcd-test
+        serviceB:
+            version: v1
+            registry: etcd-test
+    registries:
+        -
+            name: etcd-http
+            type: etcd
+            options:
+                serv: 127.0.0.1:8001
+                target: 127.0.0.1:2379
+                heartbeat: 15s
+                ttl: 10s
+                retry_times: 1
+            protocol:
+                type: http
+                address: http://127.0.0.1:8080/
