@@ -31,6 +31,7 @@ message Payload {
     map<string, string> header = 5;
     map<string, string> metadata = 6;
     bytes req_body = 7;
+    string trace_ip = 8;
 }
 
 service RPCService {

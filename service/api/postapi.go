@@ -20,9 +20,7 @@ package api
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-trellis/trellis/internal"
@@ -30,7 +28,6 @@ import (
 	"github.com/go-trellis/trellis/message/proto"
 	"github.com/go-trellis/trellis/runner"
 	"github.com/go-trellis/trellis/service"
-	"github.com/go-trellis/trellis/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-trellis/common/errors"
@@ -136,8 +133,8 @@ func (p *PostAPI) init() (err error) {
 
 	p.forwardHeaders = forwardHeaders
 
-	utils.LoadCors(engine, httpConf.GetConfig("cors"))
-	utils.LoadPprof(engine, httpConf.GetConfig("pprof"))
+	internal.LoadCors(engine, httpConf.GetConfig("cors"))
+	internal.LoadPprof(engine, httpConf.GetConfig("pprof"))
 
 	// router.ServeHTTP()
 	engine.POST(urlPath, p.serve)
@@ -194,7 +191,13 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 
 	r := &PostAPIResponse{
 		TraceID: uuid.New().String(),
-		TraceIP: utils.IPs()[0],
+		TraceIP: func() string {
+			ip, err := internal.ExternalIP()
+			if err != nil {
+				return ""
+			}
+			return ip.String()
+		}(),
 	}
 	api, ok := p.apis[apiName]
 	if !ok {
@@ -224,6 +227,7 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 	msg := &message.Message{
 		Payload: proto.Payload{
 			TraceId: r.TraceID,
+			TraceIp: r.TraceIP,
 			Id:      uuid.New().String(),
 			Service: service,
 			ReqBody: body,
@@ -231,14 +235,7 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 			Header: map[string]string{
 				"Content-Type": ctx.GetHeader("Content-Type"),
 				"X-API":        ctx.GetHeader("X-API"),
-				"Client-IP":    p.getClientIP(ctx),
-				"Host": func() string {
-					ip, err := internal.ExternalIP()
-					if err != nil {
-						return ""
-					}
-					return ip.String()
-				}(),
+				"Client-IP":    internal.GetClientIP(ctx),
 			},
 		},
 	}
@@ -267,37 +264,4 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 func (p *PostAPI) Route(string) service.HandlerFunc {
 	// async中处理callback
 	return nil
-}
-
-// getClientIP 获取客户端IP
-func (*PostAPI) getClientIP(ctx *gin.Context) string {
-
-	// Cdn-Src-Ip
-	if ip := ctx.GetHeader("Cdn-Src-Ip"); ip != "" {
-		return ip
-	}
-
-	// X-Forwarded-For
-	if ips := ctx.GetHeader("X-Forwarded-For"); ips != "" {
-		addr := strings.Split(ips, ",")
-		if len(addr) > 0 && addr[0] != "" {
-			rip, _, err := net.SplitHostPort(addr[0])
-			if err != nil {
-				rip = addr[0]
-			}
-			return rip
-		}
-	}
-
-	// Client_Ip
-	if ip := ctx.GetHeader("Client-Ip"); ip != "" {
-		return ip
-	}
-
-	// RemoteAddr
-	if ip, _, err := net.SplitHostPort(ctx.Request.RemoteAddr); err == nil {
-		return ip
-	}
-
-	return ""
 }

@@ -28,10 +28,10 @@ import (
 	"github.com/go-trellis/config"
 
 	"github.com/go-trellis/trellis/codec"
+	"github.com/go-trellis/trellis/internal"
 	"github.com/go-trellis/trellis/message"
 	"github.com/go-trellis/trellis/runner"
 	"github.com/go-trellis/trellis/service"
-	"github.com/go-trellis/trellis/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-trellis/common/errors"
@@ -99,8 +99,8 @@ func (p *Service) init() (err error) {
 
 	p.forwardHeaders = forwardHeaders
 
-	utils.LoadCors(engine, httpConf.GetConfig("cors"))
-	utils.LoadPprof(engine, httpConf.GetConfig("pprof"))
+	internal.LoadCors(engine, httpConf.GetConfig("cors"))
+	internal.LoadPprof(engine, httpConf.GetConfig("pprof"))
 
 	// router.ServeHTTP()
 	engine.POST(urlPath, p.serve)
@@ -182,7 +182,9 @@ func (p *Service) serve(ctx *gin.Context) {
 		return
 	}
 
-	rService, err := runner.GetService(msg.GetService().GetName(), msg.GetService().GetVersion())
+	rService, err := runner.GetService(
+		msg.GetService().GetName(),
+		msg.GetService().GetVersion())
 	if err != nil {
 		r.Msg = err.Error()
 		ctx.JSON(http.StatusInternalServerError, r)

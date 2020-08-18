@@ -3,6 +3,9 @@ package internal
 import (
 	"errors"
 	"net"
+	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 func ExternalIP() (net.IP, error) {
@@ -49,4 +52,36 @@ func GetIPFromAddr(addr net.Addr) net.IP {
 	}
 
 	return ip
+}
+
+func GetClientIP(ctx *gin.Context) string {
+
+	// Cdn-Src-Ip
+	if ip := ctx.GetHeader("Cdn-Src-Ip"); ip != "" {
+		return ip
+	}
+
+	// X-Forwarded-For
+	if ips := ctx.GetHeader("X-Forwarded-For"); ips != "" {
+		addr := strings.Split(ips, ",")
+		if len(addr) > 0 && addr[0] != "" {
+			rip, _, err := net.SplitHostPort(addr[0])
+			if err != nil {
+				rip = addr[0]
+			}
+			return rip
+		}
+	}
+
+	// Client_Ip
+	if ip := ctx.GetHeader("Client-Ip"); ip != "" {
+		return ip
+	}
+
+	// RemoteAddr
+	if ip, _, err := net.SplitHostPort(ctx.Request.RemoteAddr); err == nil {
+		return ip
+	}
+
+	return ""
 }
