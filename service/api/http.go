@@ -25,9 +25,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-trellis/config"
-
 	"github.com/go-trellis/trellis/codec"
+	"github.com/go-trellis/trellis/errcode"
 	"github.com/go-trellis/trellis/internal"
 	"github.com/go-trellis/trellis/message"
 	"github.com/go-trellis/trellis/runner"
@@ -35,6 +34,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-trellis/common/errors"
+	"github.com/go-trellis/config"
+	"github.com/google/uuid"
 )
 
 func init() {
@@ -51,12 +52,6 @@ type Service struct {
 	forwardHeaders []string
 
 	srv *http.Server
-}
-
-type Response struct {
-	Code   uint64      `json:"code"`
-	Msg    string      `json:"msg,omitempty"`
-	Result interface{} `json:"result"`
 }
 
 // NewService new api service
@@ -154,7 +149,16 @@ func (p *Service) Stop() error {
 func (p *Service) serve(ctx *gin.Context) {
 	msg := &message.Message{}
 	// msg := &proto.Payload{}
-	r := &Response{}
+	r := &Response{
+		TraceID: uuid.New().String(),
+		TraceIP: func() string {
+			ip, err := internal.ExternalIP()
+			if err != nil {
+				return ""
+			}
+			return ip.String()
+		}(),
+	}
 	msgcodeC, err := codec.GetCodec(ctx.Request.Header.Get("content-type"))
 	if err != nil {
 		r.Msg = err.Error()
@@ -166,45 +170,79 @@ func (p *Service) serve(ctx *gin.Context) {
 		body := &bytes.Buffer{}
 		_, err := body.ReadFrom(ctx.Request.Body)
 		if err != nil {
-			r.Msg = err.Error()
+			getErr := errcode.ErrBadRequest.New(errors.Params{"err": err.Error()})
+			r.Code = getErr.Code()
+			r.Msg = getErr.Error()
+			r.Namespace = getErr.Namespace()
 			ctx.JSON(http.StatusBadRequest, r)
 			return
 		}
 		err = json.Unmarshal(body.Bytes(), msg)
 		if err != nil {
-			r.Msg = err.Error()
+			getErr := errcode.ErrBadRequest.New(errors.Params{"err": err.Error()})
+			r.Code = getErr.Code()
+			r.Msg = getErr.Error()
+			r.Namespace = getErr.Namespace()
 			ctx.JSON(http.StatusBadRequest, r)
 			return
 		}
 	default:
-		r.Msg = fmt.Sprintf("unsupported codec, %s", msgcodeC.String())
+		getErr := errcode.ErrBadRequest.New(
+			errors.Params{"err": fmt.Sprintf("unsupported codec, %s", msgcodeC.String())})
+		r.Code = getErr.Code()
+		r.Msg = getErr.Error()
+		r.Namespace = getErr.Namespace()
 		ctx.JSON(http.StatusBadRequest, r)
 		return
 	}
+
+	r.TraceID = msg.GetTraceId()
 
 	rService, err := runner.GetService(
 		msg.GetService().GetName(),
 		msg.GetService().GetVersion())
 	if err != nil {
-		r.Msg = err.Error()
+		getErr := errcode.ErrCallService.New(errors.Params{"err": err.Error()})
+		r.Code = getErr.Code()
+		r.Msg = getErr.Error()
+		r.Namespace = getErr.Namespace()
 		ctx.JSON(http.StatusInternalServerError, r)
 		return
 	}
 
 	hf := rService.Route(msg.GetTopic())
 	if hf == nil {
-		r.Msg = "topic not found"
+		apiErr := errcode.ErrAPINotFound.New()
+		r.Code = apiErr.Code()
+		r.Msg = apiErr.Error()
+		r.Namespace = apiErr.Namespace()
 		ctx.JSON(200, r)
 		return
 	}
 	resp, err := hf(msg)
-	if err != nil {
-		r.Msg = err.Error()
+	if err == nil {
+		r.Result = resp
 		ctx.JSON(200, r)
 		return
 	}
 
-	r.Result = resp
+	// errors
+	switch et := err.(type) {
+	case errors.ErrorCode:
+		r.Code = et.Code()
+		r.Msg = et.Error()
+		r.Namespace = et.Namespace()
+	case errors.SimpleError:
+		cErr := errcode.ErrCallService.New(errors.Params{"err": et.Error()})
+		r.Code = cErr.Code()
+		r.Msg = et.Error()
+		r.Namespace = et.Namespace()
+	default:
+		cErr := errcode.ErrCallService.New(errors.Params{"err": et.Error()})
+		r.Code = cErr.Code()
+		r.Msg = cErr.Error()
+		r.Namespace = cErr.Namespace()
+	}
 
 	ctx.JSON(200, r)
 }

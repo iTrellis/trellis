@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-trellis/trellis/errcode"
 	"github.com/go-trellis/trellis/internal"
 	"github.com/go-trellis/trellis/message"
 	"github.com/go-trellis/trellis/message/proto"
@@ -58,13 +59,14 @@ type api struct {
 	Topic string
 }
 
-// PostAPIResponse response
-type PostAPIResponse struct {
-	TraceID string      `json:"trace_id"`
-	TraceIP string      `json:"trace_ip"`
-	Code    uint64      `json:"code"`
-	Msg     string      `json:"msg,omitempty"`
-	Result  interface{} `json:"result"`
+// Response response
+type Response struct {
+	TraceID   string      `json:"trace_id"`
+	TraceIP   string      `json:"trace_ip"`
+	Code      uint64      `json:"code"`
+	Namespace string      `json:"namespace,omitempty"`
+	Msg       string      `json:"msg,omitempty"`
+	Result    interface{} `json:"result"`
 }
 
 // NewPostAPI new api service
@@ -189,7 +191,7 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 
 	apiName := ctx.Request.Header.Get("X-API")
 
-	r := &PostAPIResponse{
+	r := &Response{
 		TraceID: uuid.New().String(),
 		TraceIP: func() string {
 			ip, err := internal.ExternalIP()
@@ -201,8 +203,20 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 	}
 	api, ok := p.apis[apiName]
 	if !ok {
-		r.Code = 1
-		r.Msg = "api not found"
+		apiErr := errcode.ErrAPINotFound.New()
+		r.Code = apiErr.Code()
+		r.Msg = apiErr.Error()
+		r.Namespace = apiErr.Namespace()
+		ctx.JSON(http.StatusBadRequest, r)
+		return
+	}
+
+	body, err := ctx.GetRawData()
+	if err != nil {
+		getErr := errcode.ErrBadRequest.New(errors.Params{"err": err.Error()})
+		r.Code = getErr.Code()
+		r.Msg = getErr.Error()
+		r.Namespace = getErr.Namespace()
 		ctx.JSON(http.StatusBadRequest, r)
 		return
 	}
@@ -210,17 +224,11 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 	service := &proto.Service{Name: api.GetName(), Version: api.GetVersion()}
 	rService, err := runner.GetService(api.GetName(), api.GetVersion())
 	if err != nil {
-		r.Code = 2
-		r.Msg = err.Error()
+		getErr := errcode.ErrGetService.New(errors.Params{"err": err.Error()})
+		r.Code = getErr.Code()
+		r.Msg = getErr.Error()
+		r.Namespace = getErr.Namespace()
 		ctx.JSON(http.StatusInternalServerError, r)
-		return
-	}
-
-	body, err := ctx.GetRawData()
-	if err != nil {
-		r.Code = 3
-		r.Msg = err.Error()
-		ctx.JSON(http.StatusBadRequest, r)
 		return
 	}
 
@@ -242,20 +250,38 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 
 	fn := rService.Route(api.Topic)
 	if fn == nil {
-		r.Code = 4
-		r.Msg = "topic not found"
+		sErr := errcode.ErrGetServiceTopic.New()
+		r.Code = sErr.Code()
+		r.Msg = sErr.Error()
+		r.Namespace = sErr.Namespace()
 		ctx.JSON(200, r)
 		return
 	}
 	resp, err := fn(msg)
-	if err != nil {
-		r.Code = 5
-		r.Msg = err.Error()
+
+	if err == nil {
+		r.Result = resp
 		ctx.JSON(200, r)
 		return
 	}
 
-	r.Result = resp
+	// errors
+	switch et := err.(type) {
+	case errors.ErrorCode:
+		r.Code = et.Code()
+		r.Msg = et.Error()
+		r.Namespace = et.Namespace()
+	case errors.SimpleError:
+		cErr := errcode.ErrCallService.New(errors.Params{"err": et.Error()})
+		r.Code = cErr.Code()
+		r.Msg = et.Error()
+		r.Namespace = et.Namespace()
+	default:
+		cErr := errcode.ErrCallService.New(errors.Params{"err": et.Error()})
+		r.Code = cErr.Code()
+		r.Msg = cErr.Error()
+		r.Namespace = cErr.Namespace()
+	}
 
 	ctx.JSON(200, r)
 }

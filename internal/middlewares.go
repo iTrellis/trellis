@@ -48,7 +48,8 @@ func LoadCors(engine *gin.Engine, conf config.Config) {
 		corsConf.AllowOriginFunc = wildcardMatchFunc(corsConf.AllowOrigins)
 	}
 
-	corsConf.AllowHeaders = append(corsConf.AllowHeaders, "X-Api", "X-Api-Timeout")
+	corsConf.AllowHeaders = append(corsConf.AllowHeaders,
+		"X-Api", "Client-IP", "Origin", "Content-Length", "Content-Type", "Referrer")
 
 	engine.Use(cors.New(corsConf))
 }

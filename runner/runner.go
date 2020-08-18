@@ -7,8 +7,6 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/go-trellis/common/logger"
-
 	"github.com/go-trellis/trellis/configure"
 	"github.com/go-trellis/trellis/internal"
 	"github.com/go-trellis/trellis/message/proto"
@@ -19,6 +17,7 @@ import (
 	"github.com/go-trellis/trellis/service"
 
 	"github.com/go-trellis/common/formats"
+	"github.com/go-trellis/common/logger"
 	"github.com/go-trellis/node"
 )
 
