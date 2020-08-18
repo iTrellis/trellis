@@ -2,13 +2,37 @@ syntax = "proto3";
 
 package proto;
 
+enum ServiceType {
+    LOCAL = 0;
+    HTTP = 1;
+    GRPC = 2;
+}
+
+// Service 基础服务信息
+message Service {
+    string name = 1;
+    string version = 2;
+}
+
+message RegistOption {
+    string name = 1;
+    string version = 2;
+    string protocol = 3;
+    string domain = 4;
+    uint32 weight = 5;
+    map<string, string> metadata = 6;
+}
+
 message Payload {
     string trace_id = 1;
     string id = 2;
-    string service_name = 3;
-    string service_version = 4;
-    string topic = 5;
-    map<string, string> header = 6;
-    string content_type = 7;
-    bytes body = 8;
+    Service Service = 3;
+    string topic = 4;
+    map<string, string> header = 5;
+    map<string, string> metadata = 6;
+    bytes req_body = 7;
+}
+
+service RPCService {
+    rpc Call (Payload) returns (Payload);
 }

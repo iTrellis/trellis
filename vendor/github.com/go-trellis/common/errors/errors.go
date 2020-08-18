@@ -1,5 +1,19 @@
-// GNU GPL v3 License
-// Copyright (c) 2017 go-trellis <hhh#rutcode.com>
+/*
+Copyright © 2020 Henry Huang <hhh@rutcode.com>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
 
 package errors
 
@@ -18,7 +32,7 @@ type Errors []error
 // NewErrors 生成错误数据对象
 func NewErrors(errs ...error) Errors {
 	var e Errors
-	e = append(e, errs...)
+	e.Append(errs...)
 	return e
 }
 
@@ -27,8 +41,12 @@ func (p Errors) Error() string {
 }
 
 // Append 增补错误对象
-func (p *Errors) Append(err ...error) {
-	*p = append(*p, err...)
+func (p Errors) Append(errs ...error) {
+	for _, err := range errs {
+		if err != nil {
+			p = append(p, err)
+		}
+	}
 }
 
 func errorsString(errs ...error) []string {

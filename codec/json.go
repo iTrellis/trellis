@@ -2,19 +2,11 @@ package codec
 
 import (
 	"encoding/json"
-
-	"github.com/go-trellis/trellis/message/proto"
 )
 
 type jsonCodec struct{}
 
-func (*jsonCodec) Unmarshal(bytes []byte) (*proto.Payload, error) {
-	resp := &proto.Payload{}
-	err := json.Unmarshal(bytes, resp)
-	return resp, err
-}
-
-func (*jsonCodec) UnmarshalObject(bytes []byte, obj interface{}) error {
+func (*jsonCodec) Unmarshal(bytes []byte, obj interface{}) error {
 	return json.Unmarshal(bytes, obj)
 }
 

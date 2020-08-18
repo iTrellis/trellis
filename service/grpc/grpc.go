@@ -18,12 +18,10 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package service
 
 import (
+	"context"
 	"net"
 
 	"github.com/go-trellis/trellis/message/proto"
-
-	"github.com/go-trellis/trellis/message"
-	"github.com/go-trellis/trellis/router"
 	"github.com/go-trellis/trellis/service"
 
 	"google.golang.org/grpc"
@@ -31,7 +29,7 @@ import (
 )
 
 func init() {
-	service.RegistNewServiceFunc("trellis-trans-grpc", NewService)
+	service.RegistNewServiceFunc("trellis-trans-grpc", "v1", NewService)
 }
 
 // GrpcService api service
@@ -71,7 +69,7 @@ func (p *GrpcService) Start() error {
 	}
 
 	s := grpc.NewServer()
-	proto.RegisterGrpcServcieServer(s, p)
+	proto.RegisterRPCServiceServer(s, p)
 	reflection.Register(s)
 
 	go func() error {
@@ -89,13 +87,13 @@ func (p *GrpcService) Stop() error {
 }
 
 // Route 路由
-func (p *GrpcService) Route(msg *message.Message) router.HandlerFunc {
+func (p *GrpcService) Route(string) service.HandlerFunc {
 	// async中处理callback
 	return nil
 }
 
 // Call 路由
-func (p *GrpcService) Call(msg *proto.Payload) error {
+func (p *GrpcService) Call(context.Context, *proto.Payload) (*proto.Payload, error) {
 	// async中处理callback
-	return nil
+	return nil, nil
 }

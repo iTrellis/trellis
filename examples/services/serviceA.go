@@ -4,23 +4,23 @@ import (
 	"fmt"
 
 	"github.com/go-trellis/trellis/message"
-	"github.com/go-trellis/trellis/router"
 	"github.com/go-trellis/trellis/service"
 )
 
 func init() {
-	service.RegistNewServiceFunc("serviceA", NewServiceA)
+	service.RegistNewServiceFunc("serviceA", "v1", NewServiceA)
 }
 
-func NewServiceA(optFuncs ...service.OptionFunc) (service.Service, error) {
+func NewServiceA(opts ...service.OptionFunc) (service.Service, error) {
 	s := &ServiceA{}
 
-	for _, o := range optFuncs {
+	for _, o := range opts {
 		o(&s.opts)
 	}
 
-	fmt.Println(s.opts.Config.GetString("key1"))
-	fmt.Println(s.opts.Config.GetString("key2"))
+	s.opts.Logger.Info("serviceA_init", "key1", s.opts.Config.Get("key1"))
+	s.opts.Logger.Info("serviceA_init", "key2", s.opts.Config.Get("key2"))
+
 	return s, nil
 }
 
@@ -28,25 +28,32 @@ type ServiceA struct {
 	opts service.Options
 }
 
-type ResponseA struct {
+type Ping struct {
 	Name string `json:"name"`
 }
 
-func (p *ServiceA) Route(msg *message.Message) router.HandlerFunc {
-	fmt.Println(msg)
-	resp := ResponseA{}
-	switch msg.GetTopic() {
+type Pong struct {
+	Name string `json:"name"`
+}
+
+func (p *ServiceA) Route(topic string) service.HandlerFunc {
+	switch topic {
 	case "test1":
-		return func(msg *message.Message) error {
-			resp.Name = "test1"
-			msg.SetBody(resp)
-			return nil
+		return func(msg *message.Message) (interface{}, error) {
+			fmt.Println(string(msg.ReqBody))
+			req := &Ping{}
+			if err := msg.ToObject(req); err != nil {
+				return nil, err
+			}
+			return Pong{Name: fmt.Sprintf("hello1: %s", req.Name)}, nil
 		}
 	case "test2":
-		return func(msg *message.Message) error {
-			resp.Name = "test2"
-			msg.SetBody(resp)
-			return nil
+		return func(msg *message.Message) (interface{}, error) {
+			req := &Ping{}
+			if err := msg.ToObject(req); err != nil {
+				return nil, err
+			}
+			return Pong{Name: fmt.Sprintf("hello2: %s", req.Name)}, nil
 		}
 	}
 	return nil

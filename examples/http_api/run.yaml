@@ -1,30 +1,74 @@
 project:
+    logger:
+        level: 1
+        chan_buffer: 10000
+        separator: "\t"
     services:
-        trellis-trans-api:
+        trellis-trans-postapi:
             version: v1
             options:
-                debug: ""
+                mode: "debug" # "" "release" "test"
                 http:
                     path: /
+                    cors:
+                        allow-origins: ["*"]
+                        allow-methods: ["POST", "GET", "OPTION"]
+                        allow-headers: ["X-Requested-With", "X-Cookie", "sso_service_ticket", "Authorization", "Content-Type", "Content-Length", "Origin", "X-ERP", "X-API", "Accept"]
+                        expose-headers: ["Content-Length", "Content-Type", "Authorization", "X-Cookie", "sso_service_ticket", "X-ERP", "X-API"]
+                apis:
+                    type: file # mysql
+                    mysql:
+                        ###
+                    file:
+                        trellis_test:
+                            api: trellis.test
+                            service_name: serviceA
+                            service_version: v1
+                            topic: test1
         serviceA:
             version: v1
             options:
                 key1: a
                 key2: b
-            registry: etcd-test
         serviceB:
             version: v1
-            registry: etcd-test
     registries:
-        -
-            name: etcd-http
-            type: etcd
-            options:
-                serv: 127.0.0.1:8001
-                target: 127.0.0.1:2379
-                heartbeat: 15s
-                ttl: 10s
-                retry_times: 1
-            protocol:
-                type: http
-                address: http://127.0.0.1:8080/
+        # etcd-test:
+        #     type: etcd
+        #     options:
+        #         endpoint: 127.0.0.1:2379
+        #         heartbeat: 15s
+        #         ttl: 10s
+        #         timeout: 10s
+        #         retry_times: 1
+        #     watchers:
+        #         -
+        #             name: remote_http 
+        #             version: v1
+        cache-test:
+            type: cache
+            sevices:
+                -
+                    name: remote_http
+                    version: v1
+                    protocol: http
+                    domain: 127.0.0.1:8081
+                    weight: 10 ## default 1
+                    metadata:
+                        a: b
+                        c: d
+                -
+                    name: remote_http
+                    version: v1
+                    protocol: http
+                    domain: 127.0.0.1:8081
+                    weight: 20 ## default 1
+                    metadata:
+                        a: b
+                        x: "y"
+            watchers:
+                -
+                    name: remote_http
+                    version: v1
+                    load_balancing: 0 # default 0
+

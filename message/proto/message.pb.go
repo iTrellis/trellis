@@ -4,8 +4,12 @@
 package proto
 
 import (
+	context "context"
 	fmt "fmt"
 	proto "github.com/golang/protobuf/proto"
+	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 	math "math"
 )
 
@@ -20,15 +24,169 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
+type ServiceType int32
+
+const (
+	ServiceType_LOCAL ServiceType = 0
+	ServiceType_HTTP  ServiceType = 1
+	ServiceType_GRPC  ServiceType = 2
+)
+
+var ServiceType_name = map[int32]string{
+	0: "LOCAL",
+	1: "HTTP",
+	2: "GRPC",
+}
+
+var ServiceType_value = map[string]int32{
+	"LOCAL": 0,
+	"HTTP":  1,
+	"GRPC":  2,
+}
+
+func (x ServiceType) String() string {
+	return proto.EnumName(ServiceType_name, int32(x))
+}
+
+func (ServiceType) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_33c57e4bae7b9afd, []int{0}
+}
+
+// Service 基础服务信息
+type Service struct {
+	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Version              string   `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *Service) Reset()         { *m = Service{} }
+func (m *Service) String() string { return proto.CompactTextString(m) }
+func (*Service) ProtoMessage()    {}
+func (*Service) Descriptor() ([]byte, []int) {
+	return fileDescriptor_33c57e4bae7b9afd, []int{0}
+}
+
+func (m *Service) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_Service.Unmarshal(m, b)
+}
+func (m *Service) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_Service.Marshal(b, m, deterministic)
+}
+func (m *Service) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Service.Merge(m, src)
+}
+func (m *Service) XXX_Size() int {
+	return xxx_messageInfo_Service.Size(m)
+}
+func (m *Service) XXX_DiscardUnknown() {
+	xxx_messageInfo_Service.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Service proto.InternalMessageInfo
+
+func (m *Service) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *Service) GetVersion() string {
+	if m != nil {
+		return m.Version
+	}
+	return ""
+}
+
+type RegistOption struct {
+	Name                 string            `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Version              string            `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	Protocol             string            `protobuf:"bytes,3,opt,name=protocol,proto3" json:"protocol,omitempty"`
+	Domain               string            `protobuf:"bytes,4,opt,name=domain,proto3" json:"domain,omitempty"`
+	Weight               uint32            `protobuf:"varint,5,opt,name=weight,proto3" json:"weight,omitempty"`
+	Metadata             map[string]string `protobuf:"bytes,6,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
+	XXX_unrecognized     []byte            `json:"-"`
+	XXX_sizecache        int32             `json:"-"`
+}
+
+func (m *RegistOption) Reset()         { *m = RegistOption{} }
+func (m *RegistOption) String() string { return proto.CompactTextString(m) }
+func (*RegistOption) ProtoMessage()    {}
+func (*RegistOption) Descriptor() ([]byte, []int) {
+	return fileDescriptor_33c57e4bae7b9afd, []int{1}
+}
+
+func (m *RegistOption) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RegistOption.Unmarshal(m, b)
+}
+func (m *RegistOption) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RegistOption.Marshal(b, m, deterministic)
+}
+func (m *RegistOption) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RegistOption.Merge(m, src)
+}
+func (m *RegistOption) XXX_Size() int {
+	return xxx_messageInfo_RegistOption.Size(m)
+}
+func (m *RegistOption) XXX_DiscardUnknown() {
+	xxx_messageInfo_RegistOption.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RegistOption proto.InternalMessageInfo
+
+func (m *RegistOption) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *RegistOption) GetVersion() string {
+	if m != nil {
+		return m.Version
+	}
+	return ""
+}
+
+func (m *RegistOption) GetProtocol() string {
+	if m != nil {
+		return m.Protocol
+	}
+	return ""
+}
+
+func (m *RegistOption) GetDomain() string {
+	if m != nil {
+		return m.Domain
+	}
+	return ""
+}
+
+func (m *RegistOption) GetWeight() uint32 {
+	if m != nil {
+		return m.Weight
+	}
+	return 0
+}
+
+func (m *RegistOption) GetMetadata() map[string]string {
+	if m != nil {
+		return m.Metadata
+	}
+	return nil
+}
+
 type Payload struct {
 	TraceId              string            `protobuf:"bytes,1,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
 	Id                   string            `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
-	ServiceName          string            `protobuf:"bytes,3,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
-	ServiceVersion       string            `protobuf:"bytes,4,opt,name=service_version,json=serviceVersion,proto3" json:"service_version,omitempty"`
-	Topic                string            `protobuf:"bytes,5,opt,name=topic,proto3" json:"topic,omitempty"`
-	Header               map[string]string `protobuf:"bytes,6,rep,name=header,proto3" json:"header,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	ContentType          string            `protobuf:"bytes,7,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
-	Body                 []byte            `protobuf:"bytes,8,opt,name=body,proto3" json:"body,omitempty"`
+	Service              *Service          `protobuf:"bytes,3,opt,name=Service,proto3" json:"Service,omitempty"`
+	Topic                string            `protobuf:"bytes,4,opt,name=topic,proto3" json:"topic,omitempty"`
+	Header               map[string]string `protobuf:"bytes,5,rep,name=header,proto3" json:"header,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	Metadata             map[string]string `protobuf:"bytes,6,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	ReqBody              []byte            `protobuf:"bytes,7,opt,name=req_body,json=reqBody,proto3" json:"req_body,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
 	XXX_unrecognized     []byte            `json:"-"`
 	XXX_sizecache        int32             `json:"-"`
@@ -38,7 +196,7 @@ func (m *Payload) Reset()         { *m = Payload{} }
 func (m *Payload) String() string { return proto.CompactTextString(m) }
 func (*Payload) ProtoMessage()    {}
 func (*Payload) Descriptor() ([]byte, []int) {
-	return fileDescriptor_33c57e4bae7b9afd, []int{0}
+	return fileDescriptor_33c57e4bae7b9afd, []int{2}
 }
 
 func (m *Payload) XXX_Unmarshal(b []byte) error {
@@ -73,18 +231,11 @@ func (m *Payload) GetId() string {
 	return ""
 }
 
-func (m *Payload) GetServiceName() string {
+func (m *Payload) GetService() *Service {
 	if m != nil {
-		return m.ServiceName
+		return m.Service
 	}
-	return ""
-}
-
-func (m *Payload) GetServiceVersion() string {
-	if m != nil {
-		return m.ServiceVersion
-	}
-	return ""
+	return nil
 }
 
 func (m *Payload) GetTopic() string {
@@ -101,43 +252,138 @@ func (m *Payload) GetHeader() map[string]string {
 	return nil
 }
 
-func (m *Payload) GetContentType() string {
+func (m *Payload) GetMetadata() map[string]string {
 	if m != nil {
-		return m.ContentType
+		return m.Metadata
 	}
-	return ""
+	return nil
 }
 
-func (m *Payload) GetBody() []byte {
+func (m *Payload) GetReqBody() []byte {
 	if m != nil {
-		return m.Body
+		return m.ReqBody
 	}
 	return nil
 }
 
 func init() {
+	proto.RegisterEnum("proto.ServiceType", ServiceType_name, ServiceType_value)
+	proto.RegisterType((*Service)(nil), "proto.Service")
+	proto.RegisterType((*RegistOption)(nil), "proto.RegistOption")
+	proto.RegisterMapType((map[string]string)(nil), "proto.RegistOption.MetadataEntry")
 	proto.RegisterType((*Payload)(nil), "proto.Payload")
 	proto.RegisterMapType((map[string]string)(nil), "proto.Payload.HeaderEntry")
+	proto.RegisterMapType((map[string]string)(nil), "proto.Payload.MetadataEntry")
 }
 
 func init() { proto.RegisterFile("message.proto", fileDescriptor_33c57e4bae7b9afd) }
 
 var fileDescriptor_33c57e4bae7b9afd = []byte{
-	// 256 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x4c, 0x90, 0xc1, 0x4a, 0xc4, 0x30,
-	0x10, 0x86, 0x69, 0xbb, 0x6d, 0xd7, 0xe9, 0xba, 0xca, 0xe0, 0x21, 0xee, 0xa9, 0x7a, 0xb1, 0xa7,
-	0x1e, 0xd6, 0x8b, 0x7a, 0x17, 0xf4, 0x22, 0x52, 0xc4, 0x6b, 0xc9, 0x36, 0x83, 0x06, 0xb7, 0x4d,
-	0x49, 0x63, 0x21, 0xef, 0xe6, 0xc3, 0x49, 0x93, 0x08, 0x9e, 0x32, 0xf3, 0xfd, 0x3f, 0xe1, 0x63,
-	0xe0, 0xb4, 0xa7, 0x69, 0xe2, 0x1f, 0x54, 0x8f, 0x5a, 0x19, 0x85, 0xa9, 0x7b, 0xae, 0x7f, 0x62,
-	0xc8, 0x5f, 0xb9, 0x3d, 0x2a, 0x2e, 0xf0, 0x12, 0xd6, 0x46, 0xf3, 0x8e, 0x5a, 0x29, 0x58, 0x54,
-	0x46, 0xd5, 0x49, 0x93, 0xbb, 0xfd, 0x59, 0xe0, 0x16, 0x62, 0x29, 0x58, 0xec, 0x60, 0x2c, 0x05,
-	0x5e, 0xc1, 0x66, 0x22, 0x3d, 0xcb, 0x8e, 0xda, 0x81, 0xf7, 0xc4, 0x12, 0x97, 0x14, 0x81, 0xbd,
-	0xf0, 0x9e, 0xf0, 0x06, 0xce, 0xfe, 0x2a, 0x33, 0xe9, 0x49, 0xaa, 0x81, 0xad, 0x5c, 0x6b, 0x1b,
-	0xf0, 0xbb, 0xa7, 0x78, 0x01, 0xa9, 0x51, 0xa3, 0xec, 0x58, 0xea, 0x62, 0xbf, 0xe0, 0x1e, 0xb2,
-	0x4f, 0xe2, 0x82, 0x34, 0xcb, 0xca, 0xa4, 0x2a, 0xf6, 0x3b, 0xef, 0x5d, 0x07, 0xd9, 0xfa, 0xc9,
-	0x85, 0x8f, 0x83, 0xd1, 0xb6, 0x09, 0xcd, 0xc5, 0xaa, 0x53, 0x83, 0xa1, 0xc1, 0xb4, 0xc6, 0x8e,
-	0xc4, 0x72, 0x6f, 0x15, 0xd8, 0x9b, 0x1d, 0x09, 0x11, 0x56, 0x07, 0x25, 0x2c, 0x5b, 0x97, 0x51,
-	0xb5, 0x69, 0xdc, 0xbc, 0xbb, 0x87, 0xe2, 0xdf, 0x6f, 0x78, 0x0e, 0xc9, 0x17, 0xd9, 0x70, 0x81,
-	0x65, 0x5c, 0x0c, 0x67, 0x7e, 0xfc, 0xa6, 0x70, 0x00, 0xbf, 0x3c, 0xc4, 0x77, 0xd1, 0x21, 0x73,
-	0x52, 0xb7, 0xbf, 0x01, 0x00, 0x00, 0xff, 0xff, 0x85, 0x90, 0xe0, 0xd6, 0x5d, 0x01, 0x00, 0x00,
+	// 412 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x91, 0x41, 0x6f, 0xd3, 0x40,
+	0x10, 0x85, 0xb1, 0x13, 0xc7, 0xe9, 0xa4, 0x89, 0xa2, 0x51, 0x85, 0x16, 0x8b, 0x43, 0xc8, 0x01,
+	0x59, 0x08, 0xe5, 0x10, 0x90, 0x28, 0x20, 0x0e, 0x10, 0x21, 0x8a, 0x54, 0xd4, 0x68, 0xc9, 0xbd,
+	0xda, 0x66, 0x47, 0xe9, 0x0a, 0xdb, 0xeb, 0xae, 0x97, 0x20, 0xdf, 0xf9, 0xcb, 0xdc, 0x91, 0xd7,
+	0x5b, 0xab, 0x2d, 0xe2, 0x50, 0xf5, 0xe4, 0xf9, 0x66, 0xe6, 0xc9, 0xf3, 0xde, 0xc2, 0x38, 0xa7,
+	0xaa, 0x12, 0x3b, 0x5a, 0x94, 0x46, 0x5b, 0x8d, 0x91, 0xfb, 0xcc, 0xdf, 0x40, 0xfc, 0x9d, 0xcc,
+	0x5e, 0x6d, 0x09, 0x11, 0xfa, 0x85, 0xc8, 0x89, 0x05, 0xb3, 0x20, 0x3d, 0xe0, 0xae, 0x46, 0x06,
+	0xf1, 0x9e, 0x4c, 0xa5, 0x74, 0xc1, 0x42, 0xd7, 0xbe, 0xc6, 0xf9, 0xef, 0x10, 0x0e, 0x39, 0xed,
+	0x54, 0x65, 0xcf, 0x4a, 0xab, 0x74, 0x71, 0x3f, 0x39, 0x26, 0x30, 0x74, 0x07, 0x6c, 0x75, 0xc6,
+	0x7a, 0x6e, 0xd4, 0x31, 0x3e, 0x86, 0x81, 0xd4, 0xb9, 0x50, 0x05, 0xeb, 0xbb, 0x89, 0xa7, 0xa6,
+	0xff, 0x8b, 0xd4, 0xee, 0xd2, 0xb2, 0x68, 0x16, 0xa4, 0x63, 0xee, 0x09, 0x3f, 0xc0, 0x30, 0x27,
+	0x2b, 0xa4, 0xb0, 0x82, 0x0d, 0x66, 0xbd, 0x74, 0xb4, 0x7c, 0xd6, 0x9a, 0x5c, 0xdc, 0x3c, 0x70,
+	0xf1, 0xcd, 0xef, 0x7c, 0x2e, 0xac, 0xa9, 0x79, 0x27, 0x49, 0xde, 0xc3, 0xf8, 0xd6, 0x08, 0xa7,
+	0xd0, 0xfb, 0x41, 0xb5, 0x37, 0xd2, 0x94, 0x78, 0x04, 0xd1, 0x5e, 0x64, 0x3f, 0xc9, 0xbb, 0x68,
+	0xe1, 0x5d, 0x78, 0x1c, 0xcc, 0xff, 0x84, 0x10, 0xaf, 0x45, 0x9d, 0x69, 0x21, 0xf1, 0x09, 0x0c,
+	0xad, 0x11, 0x5b, 0x3a, 0x57, 0xd2, 0x8b, 0x63, 0xc7, 0x5f, 0x25, 0x4e, 0x20, 0x54, 0xd2, 0xab,
+	0x43, 0x25, 0x31, 0xed, 0x62, 0x77, 0xee, 0x47, 0xcb, 0x89, 0xbf, 0xd8, 0x77, 0x79, 0xf7, 0x2a,
+	0x47, 0x10, 0x59, 0x5d, 0xaa, 0xad, 0xcf, 0xa2, 0x05, 0x5c, 0xc2, 0xe0, 0x92, 0x84, 0x24, 0xc3,
+	0x22, 0x67, 0x38, 0xf1, 0x72, 0x7f, 0xca, 0xe2, 0xc4, 0x0d, 0x5b, 0xa7, 0x7e, 0x13, 0x8f, 0xff,
+	0x89, 0xe9, 0xe9, 0x1d, 0xd5, 0x7f, 0x12, 0x6a, 0x8c, 0x19, 0xba, 0x3a, 0xbf, 0xd0, 0xb2, 0x66,
+	0xf1, 0x2c, 0x48, 0x0f, 0x79, 0x6c, 0xe8, 0xea, 0x93, 0x96, 0x75, 0xf2, 0x16, 0x46, 0x37, 0xfe,
+	0x75, 0x9f, 0xe8, 0x1e, 0x94, 0xfb, 0x8b, 0x97, 0x30, 0xf2, 0x09, 0x6d, 0xea, 0x92, 0xf0, 0x00,
+	0xa2, 0xd3, 0xb3, 0xd5, 0xc7, 0xd3, 0xe9, 0x23, 0x1c, 0x42, 0xff, 0x64, 0xb3, 0x59, 0x4f, 0x83,
+	0xa6, 0xfa, 0xc2, 0xd7, 0xab, 0x69, 0xb8, 0x7c, 0x0d, 0xc0, 0xd7, 0xab, 0xeb, 0x48, 0x9f, 0x43,
+	0x7f, 0x25, 0xb2, 0x0c, 0x27, 0xb7, 0xed, 0x27, 0x77, 0xf8, 0x62, 0xe0, 0xf0, 0xd5, 0xdf, 0x00,
+	0x00, 0x00, 0xff, 0xff, 0x58, 0x5e, 0xad, 0x53, 0x3a, 0x03, 0x00, 0x00,
+}
+
+// Reference imports to suppress errors if they are not otherwise used.
+var _ context.Context
+var _ grpc.ClientConn
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the grpc package it is being compiled against.
+const _ = grpc.SupportPackageIsVersion4
+
+// RPCServiceClient is the client API for RPCService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
+type RPCServiceClient interface {
+	Call(ctx context.Context, in *Payload, opts ...grpc.CallOption) (*Payload, error)
+}
+
+type rPCServiceClient struct {
+	cc *grpc.ClientConn
+}
+
+func NewRPCServiceClient(cc *grpc.ClientConn) RPCServiceClient {
+	return &rPCServiceClient{cc}
+}
+
+func (c *rPCServiceClient) Call(ctx context.Context, in *Payload, opts ...grpc.CallOption) (*Payload, error) {
+	out := new(Payload)
+	err := c.cc.Invoke(ctx, "/proto.RPCService/Call", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// RPCServiceServer is the server API for RPCService service.
+type RPCServiceServer interface {
+	Call(context.Context, *Payload) (*Payload, error)
+}
+
+// UnimplementedRPCServiceServer can be embedded to have forward compatible implementations.
+type UnimplementedRPCServiceServer struct {
+}
+
+func (*UnimplementedRPCServiceServer) Call(ctx context.Context, req *Payload) (*Payload, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Call not implemented")
+}
+
+func RegisterRPCServiceServer(s *grpc.Server, srv RPCServiceServer) {
+	s.RegisterService(&_RPCService_serviceDesc, srv)
+}
+
+func _RPCService_Call_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Payload)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RPCServiceServer).Call(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.RPCService/Call",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RPCServiceServer).Call(ctx, req.(*Payload))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+var _RPCService_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "proto.RPCService",
+	HandlerType: (*RPCServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Call",
+			Handler:    _RPCService_Call_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "message.proto",
 }

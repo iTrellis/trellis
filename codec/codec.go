@@ -2,8 +2,6 @@ package codec
 
 import (
 	"fmt"
-
-	"github.com/go-trellis/trellis/message/proto"
 )
 
 var (
@@ -26,8 +24,7 @@ type NewCodecFunc func() (Codec, error)
 
 // Codec 编码器
 type Codec interface {
-	Unmarshal([]byte) (*proto.Payload, error)
-	UnmarshalObject([]byte, interface{}) error
+	Unmarshal([]byte, interface{}) error
 	// Marshal(*proto.Payload) ([]byte, error)
 	Marshal(interface{}) ([]byte, error)
 	String() string

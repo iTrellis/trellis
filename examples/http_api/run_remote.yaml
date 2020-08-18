@@ -1,0 +1,44 @@
+project:
+    services:
+        trellis-trans-api:
+            version: v1
+            options:
+                debug: ""
+                http:
+                    path: /
+                    cors:
+                        allow-origins: ["*"]
+                        allow-methods: ["POST", "GET", "OPTION"]
+                        allow-headers: ["X-Requested-With", "X-Cookie", "sso_service_ticket", "Authorization", "Content-Type", "Content-Length", "Origin", "X-ERP", "X-API", "Accept"]
+                        expose-headers: ["Content-Length", "Content-Type", "Authorization", "X-Cookie", "sso_service_ticket", "X-ERP", "X-API"]
+        remote_http:
+            version: v1
+            options:
+                x: "y"
+    registries:
+        etcd-test:
+            type: etcd
+            options:
+                endpoint: 127.0.0.1:2379
+                heartbeat: 15s
+                ttl: 10s
+                retry_times: 1
+            services:
+                -
+                    name: remote_http
+                    version: v1
+                    protocol: http
+                    domain: 127.0.0.1:8081
+                    weight: 10 ## default 1
+                    metadata:
+                        a: b
+                        c: d
+                -
+                    name: remote_http
+                    version: v1
+                    protocol: http
+                    domain: 127.0.0.1:8081
+                    weight: 20 ## default 1
+                    metadata:
+                        a: b
+                        x: "y"

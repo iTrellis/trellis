@@ -3,13 +3,11 @@ package services
 import (
 	"fmt"
 
-	"github.com/go-trellis/trellis/message"
-	"github.com/go-trellis/trellis/router"
 	"github.com/go-trellis/trellis/service"
 )
 
 func init() {
-	service.RegistNewServiceFunc("serviceB", NewServiceB)
+	service.RegistNewServiceFunc("serviceB", "v1", NewServiceB)
 }
 
 func NewServiceB(opts ...service.OptionFunc) (service.Service, error) {
@@ -28,6 +26,6 @@ func (p *ServiceB) Stop() error {
 	return nil
 }
 
-func (p *ServiceB) Route(*message.Message) router.HandlerFunc {
+func (p *ServiceB) Route(string) service.HandlerFunc {
 	return nil
 }

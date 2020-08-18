@@ -1,4 +1,4 @@
 #!/bin/sh
-rm *.go
+rm message.pb.go
 protoc --go_out=plugins=grpc:. *.proto
 go install
