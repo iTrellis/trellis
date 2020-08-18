@@ -78,7 +78,6 @@ func (p *Register) Regist(service *configure.RegistService) (err error) {
 				if p.option.RetryTimes < 0 {
 					continue
 				}
-				fmt.Println(err)
 
 				w.retryTimes++
 				if p.option.RetryTimes < w.retryTimes {

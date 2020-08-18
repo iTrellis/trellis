@@ -203,7 +203,6 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, r)
 		return
 	}
-	fmt.Println(api)
 
 	service := &proto.Service{Name: api.GetName(), Version: api.GetVersion()}
 	rService, err := runner.GetService(api.GetName(), api.GetVersion())
@@ -213,8 +212,6 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, r)
 		return
 	}
-
-	fmt.Println(rService)
 
 	body, err := ctx.GetRawData()
 	if err != nil {
