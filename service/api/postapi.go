@@ -27,7 +27,6 @@ import (
 	"github.com/go-trellis/trellis/internal"
 	"github.com/go-trellis/trellis/message"
 	"github.com/go-trellis/trellis/message/proto"
-	"github.com/go-trellis/trellis/runner"
 	"github.com/go-trellis/trellis/service"
 
 	"github.com/gin-gonic/gin"
@@ -129,6 +128,10 @@ func (p *PostAPI) init() (err error) {
 
 	engine.Use(gin.Recovery())
 
+	for _, fn := range useFuncs {
+		engine.Use(fn)
+	}
+
 	address := httpConf.GetString("address", ":8080")
 
 	forwardHeaders := httpConf.GetStringList("forward.headers")
@@ -138,7 +141,6 @@ func (p *PostAPI) init() (err error) {
 	internal.LoadCors(engine, httpConf.GetConfig("cors"))
 	internal.LoadPprof(engine, httpConf.GetConfig("pprof"))
 
-	// router.ServeHTTP()
 	engine.POST(urlPath, p.serve)
 
 	p.srv = &http.Server{
@@ -221,8 +223,8 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 		return
 	}
 
-	service := &proto.Service{Name: api.GetName(), Version: api.GetVersion()}
-	rService, err := runner.GetService(api.GetName(), api.GetVersion())
+	pService := &proto.Service{Name: api.GetName(), Version: api.GetVersion()}
+	rService, err := service.GetService(api.GetName(), api.GetVersion())
 	if err != nil {
 		getErr := errcode.ErrGetService.New(errors.Params{"err": err.Error()})
 		r.Code = getErr.Code()
@@ -237,7 +239,7 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 			TraceId: r.TraceID,
 			TraceIp: r.TraceIP,
 			Id:      uuid.New().String(),
-			Service: service,
+			Service: pService,
 			ReqBody: body,
 			Topic:   api.Topic,
 			Header: map[string]string{
@@ -288,6 +290,5 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 
 // Route 路由
 func (p *PostAPI) Route(string) service.HandlerFunc {
-	// async中处理callback
 	return nil
 }

@@ -1,4 +1,4 @@
-package runner
+package service
 
 import (
 	"fmt"
@@ -13,8 +13,6 @@ import (
 	"github.com/go-trellis/trellis/registry"
 	"github.com/go-trellis/trellis/registry/cache"
 	"github.com/go-trellis/trellis/registry/etcd"
-	"github.com/go-trellis/trellis/router"
-	"github.com/go-trellis/trellis/service"
 
 	"github.com/go-trellis/common/formats"
 	"github.com/go-trellis/common/logger"
@@ -27,9 +25,9 @@ type Runner struct {
 
 	conf *configure.Project
 
-	originLogger, logger logger.Logger
+	logger logger.Logger
 
-	router router.Router
+	router Router
 
 	nodeManagers map[string]node.Manager
 }
@@ -38,12 +36,13 @@ var runner *Runner
 
 // Run 运行
 func Run(cfg *configure.Project, l logger.Logger) (err error) {
-	err = NewRunner(cfg, l)
+	runner, err = NewRunner(cfg, l)
 	if err != nil {
 		return
 	}
 
-	if err = runner.Run(); err != nil {
+	err = runner.Run()
+	if err != nil {
 		return err
 	}
 
@@ -51,33 +50,30 @@ func Run(cfg *configure.Project, l logger.Logger) (err error) {
 }
 
 // NewRunner 生成启动对象
-func NewRunner(cfg *configure.Project, l logger.Logger) error {
+func NewRunner(cfg *configure.Project, l logger.Logger) (*Runner, error) {
 
 	t := &Runner{
 		conf:   cfg,
-		router: router.NewRouter(),
+		router: NewRouter(),
 
-		originLogger: l,
-		logger:       l.WithPrefix("runner"),
+		logger: l,
 
 		nodeManagers: make(map[string]node.Manager),
 	}
 
 	if err := t.registServices(); err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := t.initRegistries(); err != nil {
-		return err
+		return nil, err
 	}
 
-	runner = t
-
-	return nil
+	return t, nil
 }
 
 // GetService 获取service
-func GetService(name, version string, keys ...string) (service.Service, error) {
+func GetService(name, version string, keys ...string) (Service, error) {
 	path := internal.WorkerPath(internal.SchemaTrellis, name, version)
 	runner.locker.RLock()
 	nm := runner.nodeManagers[path]
@@ -104,8 +100,8 @@ func (p *Runner) registServices() error {
 	for name, service := range p.conf.Services {
 		service.Name = name
 		err := p.router.NewService(
-			router.OptionService(service),
-			router.OptionLogger(p.originLogger),
+			RouterOptionService(service),
+			RouterOptionLogger(p.logger),
 		)
 		if err != nil {
 			return err
@@ -234,7 +230,6 @@ func (p *Runner) initRegistries() (err error) {
 }
 
 func (p *Runner) setService(key string, nm node.Manager) {
-
 	p.locker.Lock()
 	p.nodeManagers[key] = nm
 	p.locker.Unlock()

@@ -40,14 +40,14 @@ func Logger(l logger.Logger) OptionFunc {
 // Service 服务对象
 type Service interface {
 	LifeCycle
-	Router
+	Handlers
 }
 
 // HandlerFunc 函数执行
 type HandlerFunc func(*message.Message) (interface{}, error)
 
-// Router 函数路由器
-type Router interface {
+// Handlers 函数路由器
+type Handlers interface {
 	Route(topic string) HandlerFunc
 }
 

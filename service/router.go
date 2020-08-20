@@ -1,11 +1,10 @@
-package router
+package service
 
 import (
 	"fmt"
 
 	"github.com/go-trellis/trellis/configure"
 	"github.com/go-trellis/trellis/internal"
-	"github.com/go-trellis/trellis/service"
 
 	"github.com/go-trellis/common/errors"
 	"github.com/go-trellis/common/logger"
@@ -17,52 +16,53 @@ import (
 
 // Router 路由器
 type Router interface {
-	NewService(...OptionFunc) error
+	NewService(...RouterOptionFunc) error
 	StopService(name, version string) error
-	GetService(name, version string) (service.Service, error)
+	GetService(name, version string) (Service, error)
+	CallService(name, version string, request interface{}) (resp interface{}, err error)
 	Run() error
 	Stop() error
 }
 
-// OptionFunc 配置函数定义
-type OptionFunc func(*Options)
+// RouterOptionFunc 配置函数定义
+type RouterOptionFunc func(*RouterOptions)
 
-// Options 配置
-type Options struct {
+// RouterOptions 配置
+type RouterOptions struct {
 	cfg *configure.Service
 
 	logger logger.Logger
 }
 
-// OptionService 配置参数
-func OptionService(c *configure.Service) OptionFunc {
-	return func(w *Options) {
+// RouterOptionService 配置参数
+func RouterOptionService(c *configure.Service) RouterOptionFunc {
+	return func(w *RouterOptions) {
 		w.cfg = c
 	}
 }
 
-// OptionLogger 日志
-func OptionLogger(l logger.Logger) OptionFunc {
-	return func(w *Options) {
+// RouterOptionLogger 日志
+func RouterOptionLogger(l logger.Logger) RouterOptionFunc {
+	return func(w *RouterOptions) {
 		w.logger = l
 	}
 }
 
-type worker struct {
-	opts Options
+type router struct {
+	opts RouterOptions
 
 	// locker   sync.RWMutex
-	services map[string]service.Service
+	services map[string]Service
 }
 
 // NewRouter gen router
 func NewRouter() Router {
-	return &worker{
-		services: make(map[string]service.Service),
+	return &router{
+		services: make(map[string]Service),
 	}
 }
 
-func (p *worker) NewService(opts ...OptionFunc) (err error) {
+func (p *router) NewService(opts ...RouterOptionFunc) (err error) {
 
 	for _, o := range opts {
 		o(&p.opts)
@@ -75,11 +75,11 @@ func (p *worker) NewService(opts ...OptionFunc) (err error) {
 		return err
 	}
 
-	var s service.Service
+	var s Service
 
-	s, err = service.New(p.opts.cfg.GetName(), p.opts.cfg.GetVersion(),
-		service.Config(p.opts.cfg.Options),
-		service.Logger(p.opts.logger.With(url)),
+	s, err = New(p.opts.cfg.GetName(), p.opts.cfg.GetVersion(),
+		Config(p.opts.cfg.Options),
+		Logger(p.opts.logger.With(url)),
 	)
 	if err != nil {
 		p.opts.logger.Error("new_service_failed", err.Error())
@@ -92,7 +92,7 @@ func (p *worker) NewService(opts ...OptionFunc) (err error) {
 }
 
 // Run 停止工作者
-func (p *worker) Run() error {
+func (p *router) Run() error {
 	var errs errors.Errors
 	for _, s := range p.services {
 		err := s.Start()
@@ -109,7 +109,7 @@ func (p *worker) Run() error {
 }
 
 // Stop 停止工作者
-func (p *worker) Stop() error {
+func (p *router) Stop() error {
 	var errs errors.Errors
 	for _, s := range p.services {
 		err := s.Stop()
@@ -128,7 +128,7 @@ func (p *worker) Stop() error {
 }
 
 // StopService stop service
-func (p *worker) StopService(name, version string) error {
+func (p *router) StopService(name, version string) error {
 	url := internal.WorkerPath(internal.SchemaTrellis, name, version)
 	s, ok := p.services[url]
 	if !ok {
@@ -146,7 +146,16 @@ func (p *worker) StopService(name, version string) error {
 }
 
 // GetService get service
-func (p *worker) GetService(name, version string) (service.Service, error) {
+func (p *router) GetService(name, version string) (Service, error) {
+	s, ok := p.services[internal.WorkerPath(internal.SchemaTrellis, name, version)]
+	if !ok {
+		return nil, fmt.Errorf("unknown service: %s, %s", name, version)
+	}
+	return s, nil
+}
+
+// GetService get service
+func (p *router) CallService(name, version string, request interface{}) (resp interface{}, err error) {
 	s, ok := p.services[internal.WorkerPath(internal.SchemaTrellis, name, version)]
 	if !ok {
 		return nil, fmt.Errorf("unknown service: %s, %s", name, version)

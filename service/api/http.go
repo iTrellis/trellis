@@ -29,7 +29,6 @@ import (
 	"github.com/go-trellis/trellis/errcode"
 	"github.com/go-trellis/trellis/internal"
 	"github.com/go-trellis/trellis/message"
-	"github.com/go-trellis/trellis/runner"
 	"github.com/go-trellis/trellis/service"
 
 	"github.com/gin-gonic/gin"
@@ -40,6 +39,18 @@ import (
 
 func init() {
 	service.RegistNewServiceFunc("trellis-trans-api", "v1", NewService)
+}
+
+var useFuncs = make(map[string]gin.HandlerFunc)
+
+// RegistUseFuncs 注册
+func RegistUseFuncs(name string, fn gin.HandlerFunc) error {
+	_, ok := useFuncs[name]
+	if !ok {
+		return fmt.Errorf("use funcs (%s) is already exist", name)
+	}
+	useFuncs[name] = fn
+	return nil
 }
 
 // Service api service
@@ -87,6 +98,10 @@ func (p *Service) init() (err error) {
 	engine := gin.New()
 
 	engine.Use(gin.Recovery())
+
+	for _, fn := range useFuncs {
+		engine.Use(fn)
+	}
 
 	address := httpConf.GetString("address", ":8080")
 
@@ -198,7 +213,7 @@ func (p *Service) serve(ctx *gin.Context) {
 
 	r.TraceID = msg.GetTraceId()
 
-	rService, err := runner.GetService(
+	rService, err := service.GetService(
 		msg.GetService().GetName(),
 		msg.GetService().GetVersion())
 	if err != nil {
