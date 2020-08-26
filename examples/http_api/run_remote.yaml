@@ -1,11 +1,12 @@
 project:
     services:
-        trellis-trans-api:
+        trellis-innerapi:
             version: v1
             options:
-                debug: ""
+                debug: y
                 http:
-                    path: /
+                    path: "/v1"
+                    address: ":8081"
                     cors:
                         allow-origins: ["*"]
                         allow-methods: ["POST", "GET", "OPTION"]
@@ -17,28 +18,15 @@ project:
                 x: "y"
     registries:
         etcd-test:
-            type: etcd
+            type: 1
             options:
                 endpoint: 127.0.0.1:2379
                 heartbeat: 15s
                 ttl: 10s
+                timeout: 10s
                 retry_times: 1
-            services:
+            watchers:
                 -
-                    name: remote_http
+                    name: serviceA 
                     version: v1
-                    protocol: http
-                    domain: 127.0.0.1:8081
-                    weight: 10 ## default 1
-                    metadata:
-                        a: b
-                        c: d
-                -
-                    name: remote_http
-                    version: v1
-                    protocol: http
-                    domain: 127.0.0.1:8081
-                    weight: 20 ## default 1
-                    metadata:
-                        a: b
-                        x: "y"
+                    load_balancing: 1

@@ -19,7 +19,6 @@ package configure
 
 import (
 	"encoding/json"
-	"time"
 
 	"github.com/go-trellis/common/logger"
 	"github.com/go-trellis/trellis/internal"
@@ -32,6 +31,7 @@ import (
 	_ "github.com/spf13/cobra"
 )
 
+// Config project configure
 type Config struct {
 	Project *Project `yaml:"project"`
 }
@@ -42,8 +42,10 @@ type Project struct {
 
 	Services map[string]*Service `yaml:"services"`
 
-	Registries map[string]*Registry `yam:"registries"`
+	Registries map[string]*Registry `yaml:"registries"`
 }
+
+// LoggerConfig logger's configure
 type LoggerConfig struct {
 	Level      logger.Level `yaml:"level"`
 	ChanBuffer int          `yaml:"chan_buffer"`
@@ -56,35 +58,35 @@ type Service struct {
 
 	// Protocol string         `yaml:"protocol"`
 	Options config.Options `yaml:"options"`
+
+	Registry *ServiceRegistryOptions `yaml:"registry"`
+}
+
+type ServiceRegistryOptions struct {
+	Name     string            `yaml:"name"`
+	Domain   string            `yaml:"domain"`
+	Protocol string            `yaml:"protocol"`
+	Weight   uint32            `yaml:"weight"`
+	Metadata map[string]string `yaml:"metadata"`
 }
 
 // Registry run configure
 type Registry struct {
-	Type    RegistryType   `yaml:"type"`
-	Options config.Options `yaml:"options"`
+	Type    proto.RegisterType `yaml:"type"`
+	Options config.Options     `yaml:"options"`
 
 	Services []*RegistService `yaml:"services"`
 	Watchers []*Watcher       `yaml:"watchers"`
 }
 
-// RegistryType 注册机类型
-type RegistryType string
-
-// 注册类型实例
-const (
-	RegistryTypeCache = "cache"
-	RegistryTypeETCD  = "etcd"
-)
-
 // RegistService service which should regist into registry
 type RegistService struct {
-	Name    string `yaml:"name" jpath:"name"`
-	Version string `yaml:"version" jpath:"version"`
-	// Field    string            `yaml:"field"`
-	Protocol string            `yaml:"protocal" jpath:"protocol"`
-	Domain   string            `yaml:"domain" jpath:"domain"`
-	Weight   uint32            `yaml:"option" jpath:"weight"`
-	Metadata map[string]string `yaml:"metadata" jpath:"metadata"`
+	Name     string            `yaml:"name" json:"name"`
+	Version  string            `yaml:"version" json:"version"`
+	Domain   string            `yaml:"domain" json:"domain"`
+	Protocol string            `yaml:"protocal" json:"protocal"`
+	Weight   uint32            `yaml:"weight" json:"weight"`
+	Metadata map[string]string `yaml:"metadata" json:"metadata"`
 }
 
 func (p *RegistService) String() string {
@@ -103,40 +105,13 @@ func ToRegistService(str string) (*RegistService, error) {
 
 type RegistServices []*RegistService
 
-func (p *RegistServices) UnmarshalJSON(bs []byte) error {
-	if p == nil {
-		p = &RegistServices{}
-	}
-	return json.Unmarshal(bs, p)
-}
-
-func (p RegistServices) ToNodeManager(nt node.Type) node.Manager {
-	if len(p) == 0 {
-		return nil
-	}
-
-	var nm node.Manager
-
-	for _, s := range p {
-		if nm == nil {
-			nm = node.New(nt, internal.WorkerPath(internal.SchemaTrellis, s.Name, s.Version))
-		}
-		nm.Add(&node.Node{
-			ID:     internal.WorkerDomainPath(internal.SchemaTrellis, s.Name, s.Version, s.Domain),
-			Weight: s.Weight,
-			Value:  s.String(),
-			Metadata: map[string]interface{}{
-				"protocol": s.Protocol,
-				"domain":   s.Domain},
-		})
-	}
-	return nm
-}
-
 type Watcher struct {
 	proto.Service `yaml:",inline"`
 
-	TTL time.Duration `yaml:"ttl"`
+	LoadBalancing node.Type `yaml:"load_balancing"`
+}
 
-	LoadBalancing node.Type `yaml:"load_balancing" jpath:"load_balancing"`
+// Fullpath fullname
+func (p *Watcher) Fullpath() string {
+	return internal.WorkerTrellisPath(p.GetName(), p.GetVersion())
 }

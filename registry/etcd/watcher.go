@@ -13,7 +13,7 @@ import (
 )
 
 type watcher struct {
-	option registry.WatchOption
+	conf *configure.Watcher
 
 	client *clientv3.Client
 
@@ -25,16 +25,15 @@ type watcher struct {
 	watchChan clientv3.WatchChan
 }
 
-func newWatcher(r *Register, opts registry.WatchOption) (registry.Watcher, error) {
+func newWatcher(r *Register, conf *configure.Watcher) (registry.Watcher, error) {
 	w := &watcher{
 		client: r.client,
-		option: opts,
+		conf:   conf,
 	}
 
-	w.ctx, w.cancel = context.WithTimeout(context.Background(), r.option.TTL)
+	w.ctx, w.cancel = context.WithCancel(context.Background())
 
-	w.fullpath = internal.WorkerPath(
-		internal.SchemaETCDNaming, w.option.Service.GetName(), w.option.Service.GetVersion())
+	w.fullpath = internal.WorkerETCDPath(w.conf.GetName(), w.conf.GetVersion())
 
 	w.watchChan = w.client.Watch(w.ctx, w.fullpath, clientv3.WithPrefix(), clientv3.WithPrevKV())
 
@@ -45,54 +44,73 @@ func (p *watcher) Stop() {
 	p.cancel()
 }
 
-func (p *watcher) Next() (*registry.Result, error) {
+func (p *watcher) Next(ch chan *registry.Result) {
 
 	for {
 		select {
 		case wresp := <-p.watchChan:
+			resp := &registry.Result{
+				NodeType: p.conf.LoadBalancing,
+			}
 			if wresp.Err() != nil {
-				return nil, wresp.Err()
+				resp.Err = wresp.Err()
+				ch <- resp
+				continue
 			}
 
 			if wresp.Canceled {
-				return nil, errors.New("watcher was canceled")
+				resp.Err = errors.New("watcher was canceled")
+				ch <- resp
+				continue
 			}
 
 			for _, ev := range wresp.Events {
-
 				var action string
-				var services configure.RegistServices
 
 				switch ev.Type {
 				case clientv3.EventTypePut:
-					services, _ = p.decode(ev.Kv.Value)
+					services, err := p.decode(ev.Kv.Value)
+					if err != nil {
+						resp.Err = err
+						ch <- resp
+						continue
+					}
 					if ev.IsCreate() {
 						action = registry.ActionCreate
 					} else if ev.IsModify() {
 						action = registry.ActionUpdate
 					}
+
+					resp.Service = services
 				case clientv3.EventTypeDelete:
 					action = registry.ActionDelete
-					services, _ = p.decode(ev.PrevKv.Value)
+					services, err := p.decode(ev.Kv.Value)
+					if err != nil {
+						resp.Err = err
+						ch <- resp
+						continue
+					}
+					resp.Service = services
+				default:
+
 				}
 
-				if services == nil {
-					continue
-				}
+				resp.Action = action
 
-				return &registry.Result{
-					Action:  action,
-					Service: services,
-				}, nil
+				ch <- resp
 			}
 		}
 	}
 }
 
-func (p *watcher) decode(bs []byte) (configure.RegistServices, error) {
-	ss := configure.RegistServices{}
-	if err := json.Unmarshal(bs, &ss); err != nil {
+func (p *watcher) decode(bs []byte) (*configure.RegistService, error) {
+	s := &configure.RegistService{}
+	if err := json.Unmarshal(bs, s); err != nil {
 		return nil, err
 	}
-	return ss, nil
+	return s, nil
+}
+
+func (p *watcher) Fullpath() string {
+	return p.fullpath
 }

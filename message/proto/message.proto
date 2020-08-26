@@ -2,7 +2,12 @@ syntax = "proto3";
 
 package proto;
 
-enum ServiceType {
+enum RegisterType {
+    Cache = 0;
+    ETCD = 1;
+}
+
+enum Protocol {
     LOCAL = 0;
     HTTP = 1;
     GRPC = 2;

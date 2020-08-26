@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	"github.com/go-trellis/trellis/configure"
+	"github.com/go-trellis/trellis/errcode"
 	"github.com/go-trellis/trellis/internal"
+	"github.com/go-trellis/trellis/message"
 
 	"github.com/go-trellis/common/errors"
 	"github.com/go-trellis/common/logger"
@@ -19,7 +21,7 @@ type Router interface {
 	NewService(...RouterOptionFunc) error
 	StopService(name, version string) error
 	GetService(name, version string) (Service, error)
-	CallService(name, version string, request interface{}) (resp interface{}, err error)
+	CallService(msg *message.Message) (resp interface{}, err error)
 	Run() error
 	Stop() error
 }
@@ -68,7 +70,7 @@ func (p *router) NewService(opts ...RouterOptionFunc) (err error) {
 		o(&p.opts)
 	}
 
-	url := internal.WorkerPath(internal.SchemaTrellis, p.opts.cfg.GetName(), p.opts.cfg.GetVersion())
+	url := internal.WorkerTrellisPath(p.opts.cfg.GetName(), p.opts.cfg.GetVersion())
 	if _, ok := p.services[url]; ok {
 		err = fmt.Errorf("%s already exists", url)
 		p.opts.logger.Error("new_service_failed", err.Error())
@@ -129,7 +131,7 @@ func (p *router) Stop() error {
 
 // StopService stop service
 func (p *router) StopService(name, version string) error {
-	url := internal.WorkerPath(internal.SchemaTrellis, name, version)
+	url := internal.WorkerTrellisPath(name, version)
 	s, ok := p.services[url]
 	if !ok {
 		err := fmt.Errorf("unknown service: %s, %s", name, version)
@@ -147,7 +149,7 @@ func (p *router) StopService(name, version string) error {
 
 // GetService get service
 func (p *router) GetService(name, version string) (Service, error) {
-	s, ok := p.services[internal.WorkerPath(internal.SchemaTrellis, name, version)]
+	s, ok := p.services[internal.WorkerTrellisPath(name, version)]
 	if !ok {
 		return nil, fmt.Errorf("unknown service: %s, %s", name, version)
 	}
@@ -155,10 +157,15 @@ func (p *router) GetService(name, version string) (Service, error) {
 }
 
 // GetService get service
-func (p *router) CallService(name, version string, request interface{}) (resp interface{}, err error) {
-	s, ok := p.services[internal.WorkerPath(internal.SchemaTrellis, name, version)]
-	if !ok {
-		return nil, fmt.Errorf("unknown service: %s, %s", name, version)
+func (p *router) CallService(msg *message.Message) (resp interface{}, err error) {
+	s, err := p.GetService(msg.GetService().GetName(), msg.GetService().GetVersion())
+	if err != nil {
+		return nil, err
 	}
-	return s, nil
+
+	fn := s.Route(msg.GetTopic())
+	if fn == nil {
+		return nil, errcode.ErrGetServiceTopic.New()
+	}
+	return fn(msg)
 }

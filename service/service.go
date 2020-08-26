@@ -2,8 +2,15 @@ package service
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
+	"github.com/go-trellis/trellis/configure"
+	"github.com/go-trellis/trellis/internal"
 	"github.com/go-trellis/trellis/message"
+	"github.com/go-trellis/trellis/message/proto"
 
 	"github.com/go-trellis/common/logger"
 	"github.com/go-trellis/config"
@@ -71,7 +78,7 @@ func RegistNewServiceFunc(name, version string, fn NewServiceFunc) {
 		panic("server function is nil")
 	}
 
-	serviceKey := genServiceKey(name, version)
+	serviceKey := internal.WorkerTrellisPath(name, version)
 
 	_, exist := serviceFuncs[serviceKey]
 
@@ -85,7 +92,7 @@ func RegistNewServiceFunc(name, version string, fn NewServiceFunc) {
 
 // New 生成函数对象
 func New(name, version string, opts ...OptionFunc) (Service, error) {
-	serviceKey := genServiceKey(name, version)
+	serviceKey := internal.WorkerTrellisPath(name, version)
 	fn, exist := serviceFuncs[serviceKey]
 	if !exist {
 		return nil, fmt.Errorf("server '%s' not exist", serviceKey)
@@ -93,6 +100,59 @@ func New(name, version string, opts ...OptionFunc) (Service, error) {
 	return fn(opts...)
 }
 
-func genServiceKey(name, version string) string {
-	return fmt.Sprintf("%s:%s", name, version)
+// CallServer 请求服务
+func CallServer(msg *message.Message, keys ...string) (interface{}, error) {
+	path := internal.WorkerTrellisPath(msg.GetService().GetName(), msg.GetService().GetVersion())
+	runner.locker.RLock()
+	nm := runner.nodeManagers[path]
+	runner.locker.RUnlock()
+	node, ok := nm.NodeFor()
+	if !ok {
+		return nil, fmt.Errorf("not found service")
+	}
+
+	protocol := node.Metadata.Get("protocol")
+
+	switch proto.Protocol(proto.Protocol_value[protocol]) {
+	case proto.Protocol_LOCAL:
+		return runner.router.CallService(msg)
+	case proto.Protocol_HTTP:
+		// TODO
+	case proto.Protocol_GRPC:
+		// TODO
+	}
+	return nil, fmt.Errorf("not found service")
+}
+
+// BlockStop 阻断式停止
+func BlockStop() error {
+
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, syscall.SIGTERM, syscall.SIGINT, syscall.SIGKILL)
+
+	select {
+	case <-ch:
+	}
+	return runner.Stop()
+}
+
+// Stop 停止服务
+func Stop() error {
+	defer time.Sleep(time.Second)
+	return runner.Stop()
+}
+
+// Run 运行
+func Run(cfg *configure.Project, l logger.Logger) (err error) {
+	runner, err = NewRunner(cfg, l)
+	if err != nil {
+		return
+	}
+
+	err = runner.Run()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

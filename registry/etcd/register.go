@@ -10,33 +10,49 @@ import (
 
 	"github.com/go-trellis/trellis/configure"
 	"github.com/go-trellis/trellis/internal"
+	"github.com/go-trellis/trellis/message/proto"
 	"github.com/go-trellis/trellis/registry"
 
+	"github.com/go-trellis/common/logger"
 	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 )
 
+// Register ETCD 注册对象
 type Register struct {
-	option registry.RegistOption
+	option *registry.RegistOption
+	logger logger.Logger
 
 	client *clientv3.Client
 
 	services sync.Map
 }
 
-// NewRegister instance of server regitster
-func NewRegister(option registry.RegistOption) (register registry.Registry, err error) {
-	r := &Register{
-		option: option,
-	}
+// New instance of server regitster
+func New() registry.Registry {
+	return &Register{}
+}
+
+func init() {
+	registry.Regist(proto.RegisterType_ETCD, New)
+}
+
+// Init initial register
+func (p *Register) Init(option *registry.RegistOption, log logger.Logger) (err error) {
+	p.option = option
+	p.logger = log.With("register", "etcd")
+
 	// get endpoints for register dial address
-	if r.client, err = clientv3.New(clientv3.Config{
-		Endpoints:   strings.Split(option.Endpoint, ","),
-		DialTimeout: option.TTL,
+	if p.client, err = clientv3.New(clientv3.Config{
+		Endpoints:   strings.Split(p.option.Endpoint, ","),
+		DialTimeout: p.option.TTL,
 	}); err != nil {
-		return nil, fmt.Errorf("grpclib: create clientv3 client failed: %v", err)
+		err = fmt.Errorf("grpclib: create clientv3 client failed: %v", err)
+		p.logger.Error(err.Error())
+		return
 	}
-	return r, nil
+
+	return nil
 }
 
 type worker struct {
@@ -46,58 +62,68 @@ type worker struct {
 	fullServiceName string
 	fullpath        string
 
-	// client *clientv3.Client
-
 	stopSignal chan bool
 
 	// invoke self-register with ticker
 	ticker *time.Ticker
 
 	interval time.Duration
-
-	retryTimes uint32
 }
 
 // Regist server regist into etcd
-func (p *Register) Regist(service *configure.RegistService) (err error) {
+func (p *Register) Regist(s *configure.RegistService) (err error) {
 	wer := &worker{
-		service: service,
-		ticker:  time.NewTicker(p.option.Heartbeat),
+		service:    s,
+		ticker:     time.NewTicker(p.option.Heartbeat),
+		fullpath:   internal.WorkerETCDDomainPath(s.Name, s.Version, s.Domain),
+		stopSignal: make(chan bool),
 	}
-	wer.fullpath =
-		internal.WorkerDomainPath(internal.SchemaETCDNaming, wer.service.Name, wer.service.Version, wer.service.Domain)
 
-	_, ok := p.services.LoadOrStore(wer.fullpath, wer)
+	_, ok := p.services.Load(wer.fullpath)
 	if ok {
-		return errors.New("service already registed")
+		err = errors.New("service already registed")
+		p.logger.Error("service", wer, "error", err)
+		return err
 	}
+
+	p.logger.Debug("service", wer.fullpath)
 
 	go func(w *worker) {
+		var count uint32
 		for {
 			if err = p.regist(w); err != nil {
 				if p.option.RetryTimes < 0 {
 					continue
 				}
-
-				w.retryTimes++
-				if p.option.RetryTimes < w.retryTimes {
-					panic(fmt.Errorf("%s regist into etcd failed times above: %d, %v",
-						w.fullpath, w.retryTimes, err))
+				if p.option.RetryTimes < count {
+					panic(fmt.Errorf("%s regist into etcd failed times above: %d, %v", w.fullpath, count, err))
 				}
-
+				count++
 				continue
 			}
-			w.retryTimes = 0
+			count = 0
 			select {
 			case <-w.stopSignal:
-				w.client.Close()
+				p.stop(w.fullpath)
 				return
 			case <-w.ticker.C:
+
 			}
 		}
 	}(wer)
 
+	p.services.Store(wer.fullpath, wer)
+
 	return
+}
+
+func (p *Register) stop(path string) {
+
+	ctxDel, cDel := context.WithTimeout(context.Background(), p.option.Heartbeat)
+	defer cDel()
+	resp, err := p.client.Delete(ctxDel, path)
+	p.logger.Debug("stop", path, resp, err)
+	p.client.Close()
 }
 
 func (p *Register) regist(wor *worker) (err error) {
@@ -135,8 +161,7 @@ func (p *Register) Revoke(s *configure.RegistService) error {
 		return errors.New("domain is empty")
 	}
 
-	fullpath :=
-		internal.WorkerDomainPath(internal.SchemaETCDNaming, s.Name, s.Version, s.Domain)
+	fullpath := internal.WorkerETCDDomainPath(s.Name, s.Version, s.Domain)
 
 	lWorker, ok := p.services.Load(fullpath)
 	if !ok {
@@ -151,13 +176,6 @@ func (p *Register) Revoke(s *configure.RegistService) error {
 
 	wor.stopSignal <- true
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.option.Heartbeat)
-	defer cancel()
-
-	if _, err := p.client.Delete(ctx, fullpath); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -167,7 +185,10 @@ func (p *Register) Stop() {
 	wg := sync.WaitGroup{}
 	p.services.Range(func(key, value interface{}) bool {
 		wg.Add(1)
-		wer := value.(*worker)
+		wer, ok := value.(*worker)
+		if !ok {
+			return false
+		}
 		go func(w *worker) {
 			defer wg.Done()
 			w.stopSignal <- true
@@ -177,8 +198,8 @@ func (p *Register) Stop() {
 	wg.Wait()
 }
 
-// Watch 获取watch对象
-func (p *Register) Watch(option registry.WatchOption) (registry.Watcher, error) {
+// Watcher 获取Watcher对象
+func (p *Register) Watcher(option *configure.Watcher) (registry.Watcher, error) {
 	return newWatcher(p, option)
 }
 

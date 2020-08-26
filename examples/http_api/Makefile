@@ -10,6 +10,10 @@ build_remote:
 run: 
 	./sample run --config=run.yaml
 
+.PHONY: run2
+run2: 
+	./sample run --config=run2.yaml
+
 .PHONY: run_remote
 run_remote: 
 	./remote run --config=run_remote.yaml

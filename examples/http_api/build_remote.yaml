@@ -18,7 +18,7 @@ project:
             -X 'github.com/go-trellis/common/builder.Author={{ author }}@{{ hostname }}'
             -X 'github.com/go-trellis/common/builder.BuildTime={{datetime "2006-01-02 15:04:05"}}'
     services:
-        trellis-trans-api:
+        trellis-innerapi:
             url: github.com/go-trellis/trellis/service/api
         remoteA:
             url: github.com/go-trellis/trellis/examples/services

@@ -20,13 +20,11 @@ package api
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/go-trellis/trellis/codec"
-	"github.com/go-trellis/trellis/errcode"
 	"github.com/go-trellis/trellis/internal"
 	"github.com/go-trellis/trellis/message"
 	"github.com/go-trellis/trellis/service"
@@ -34,11 +32,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-trellis/common/errors"
 	"github.com/go-trellis/config"
-	"github.com/google/uuid"
 )
 
 func init() {
-	service.RegistNewServiceFunc("trellis-trans-api", "v1", NewService)
+	service.RegistNewServiceFunc("trellis-innerapi", "v1", NewService)
 }
 
 var useFuncs = make(map[string]gin.HandlerFunc)
@@ -55,8 +52,8 @@ func RegistUseFuncs(name string, fn gin.HandlerFunc) error {
 
 // Service api service
 type Service struct {
-	debug bool
-	opts  service.Options
+	mode string
+	opts service.Options
 
 	cfg config.Config
 
@@ -86,12 +83,11 @@ func NewService(opts ...service.OptionFunc) (service.Service, error) {
 
 func (p *Service) init() (err error) {
 
-	p.debug = p.cfg.GetBoolean("debug")
-	if !p.debug {
-		gin.SetMode("release")
-	}
+	p.mode = p.cfg.GetString("mode")
 
-	httpConf := p.cfg.GetConfig("http")
+	gin.SetMode(p.mode)
+
+	httpConf := p.cfg.GetValuesConfig("http")
 
 	urlPath := httpConf.GetString("path", "/")
 
@@ -109,8 +105,8 @@ func (p *Service) init() (err error) {
 
 	p.forwardHeaders = forwardHeaders
 
-	internal.LoadCors(engine, httpConf.GetConfig("cors"))
-	internal.LoadPprof(engine, httpConf.GetConfig("pprof"))
+	internal.LoadCors(engine, httpConf.GetValuesConfig("cors"))
+	internal.LoadPprof(engine, httpConf.GetValuesConfig("pprof"))
 
 	// router.ServeHTTP()
 	engine.POST(urlPath, p.serve)
@@ -141,7 +137,7 @@ func (p *Service) Start() error {
 		}
 
 		if err != http.ErrServerClosed {
-			// print log
+			p.opts.Logger.Error("http_server_closed", err)
 		}
 	}()
 	return nil
@@ -163,103 +159,42 @@ func (p *Service) Stop() error {
 
 func (p *Service) serve(ctx *gin.Context) {
 	msg := &message.Message{}
-	// msg := &proto.Payload{}
-	r := &Response{
-		TraceID: uuid.New().String(),
-		TraceIP: func() string {
-			ip, err := internal.ExternalIP()
-			if err != nil {
-				return ""
-			}
-			return ip.String()
-		}(),
-	}
 	msgcodeC, err := codec.GetCodec(ctx.Request.Header.Get("content-type"))
 	if err != nil {
-		r.Msg = err.Error()
-		ctx.JSON(http.StatusBadRequest, r)
-		return
-	}
-	switch msgcodeC.String() {
-	case codec.JSON:
-		body := &bytes.Buffer{}
-		_, err := body.ReadFrom(ctx.Request.Body)
-		if err != nil {
-			getErr := errcode.ErrBadRequest.New(errors.Params{"err": err.Error()})
-			r.Code = getErr.Code()
-			r.Msg = getErr.Error()
-			r.Namespace = getErr.Namespace()
-			ctx.JSON(http.StatusBadRequest, r)
-			return
-		}
-		err = json.Unmarshal(body.Bytes(), msg)
-		if err != nil {
-			getErr := errcode.ErrBadRequest.New(errors.Params{"err": err.Error()})
-			r.Code = getErr.Code()
-			r.Msg = getErr.Error()
-			r.Namespace = getErr.Namespace()
-			ctx.JSON(http.StatusBadRequest, r)
-			return
-		}
-	default:
-		getErr := errcode.ErrBadRequest.New(
-			errors.Params{"err": fmt.Sprintf("unsupported codec, %s", msgcodeC.String())})
-		r.Code = getErr.Code()
-		r.Msg = getErr.Error()
-		r.Namespace = getErr.Namespace()
-		ctx.JSON(http.StatusBadRequest, r)
+		ctx.JSON(http.StatusBadRequest, msg)
 		return
 	}
 
-	r.TraceID = msg.GetTraceId()
-
-	rService, err := service.GetService(
-		msg.GetService().GetName(),
-		msg.GetService().GetVersion())
+	body := &bytes.Buffer{}
+	_, err = body.ReadFrom(ctx.Request.Body)
 	if err != nil {
-		getErr := errcode.ErrCallService.New(errors.Params{"err": err.Error()})
-		r.Code = getErr.Code()
-		r.Msg = getErr.Error()
-		r.Namespace = getErr.Namespace()
-		ctx.JSON(http.StatusInternalServerError, r)
+		ctx.JSON(http.StatusBadRequest, msg)
 		return
 	}
 
-	hf := rService.Route(msg.GetTopic())
-	if hf == nil {
-		apiErr := errcode.ErrAPINotFound.New()
-		r.Code = apiErr.Code()
-		r.Msg = apiErr.Error()
-		r.Namespace = apiErr.Namespace()
-		ctx.JSON(200, r)
-		return
-	}
-	resp, err := hf(msg)
-	if err == nil {
-		r.Result = resp
-		ctx.JSON(200, r)
+	err = msgcodeC.Unmarshal(body.Bytes(), msg)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, msg)
 		return
 	}
 
-	// errors
-	switch et := err.(type) {
-	case errors.ErrorCode:
-		r.Code = et.Code()
-		r.Msg = et.Error()
-		r.Namespace = et.Namespace()
-	case errors.SimpleError:
-		cErr := errcode.ErrCallService.New(errors.Params{"err": et.Error()})
-		r.Code = cErr.Code()
-		r.Msg = et.Error()
-		r.Namespace = et.Namespace()
-	default:
-		cErr := errcode.ErrCallService.New(errors.Params{"err": et.Error()})
-		r.Code = cErr.Code()
-		r.Msg = cErr.Error()
-		r.Namespace = cErr.Namespace()
+	p.opts.Logger.Info("request", "message", msg)
+
+	resp, err := service.CallServer(msg,
+		fmt.Sprintf("%+v-%s", msg.GetService(), msg.GetHeader()["Client-IP"]))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, msg)
+		return
+	}
+	bs, err := msgcodeC.Marshal(resp)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, msg)
+		return
 	}
 
-	ctx.JSON(200, r)
+	msg.SetBody(bs)
+
+	ctx.JSON(200, msg)
 }
 
 // Route 路由

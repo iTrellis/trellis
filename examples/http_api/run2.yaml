@@ -10,7 +10,7 @@ project:
                 mode: "release" # "" "release" "test"
                 http:
                     path: /
-                    address: ":8000"
+                    address: ":8001"
                     cors:
                         allow-origins: ["*"]
                         allow-methods: ["POST", "GET", "OPTION"]
@@ -33,7 +33,7 @@ project:
                 key2: b
             registry:
                 name: etcd-test
-                domain: 127.0.0.1:8081
+                domain: 127.0.0.1:8001
                 weight: 10 ## default 1
                 protocol: http
                 metadata:

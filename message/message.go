@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	"github.com/go-trellis/trellis/codec"
+	"github.com/go-trellis/trellis/internal"
 	"github.com/go-trellis/trellis/message/proto"
+	"github.com/google/uuid"
 )
 
 // Message Message
@@ -44,4 +46,33 @@ func (p *Message) getCodecer() error {
 	p.codecer = c
 
 	return nil
+}
+
+func NewMessage() *Message {
+	return &Message{
+		Payload: proto.Payload{
+			TraceId: uuid.New().String(),
+			TraceIp: func() string {
+				ip, err := internal.ExternalIP()
+				if err != nil {
+					return ""
+				}
+				return ip.String()
+			}(),
+			Id: uuid.New().String(),
+		},
+	}
+}
+
+func (p *Message) Copy() *Message {
+	if p == nil {
+		return nil
+	}
+	return &Message{
+		Payload: proto.Payload{
+			TraceId: p.TraceId,
+			TraceIp: p.TraceIp,
+			Id:      uuid.New().String(),
+		},
+	}
 }

@@ -36,7 +36,7 @@ import (
 )
 
 func init() {
-	service.RegistNewServiceFunc("trellis-trans-postapi", "v1", NewPostAPI)
+	service.RegistNewServiceFunc("trellis-postapi", "v1", NewPostAPI)
 }
 
 // PostAPI api service
@@ -55,7 +55,8 @@ type PostAPI struct {
 
 type api struct {
 	proto.Service
-	Topic string
+	Topic    string
+	Metadata map[string]string
 }
 
 // Response response
@@ -102,25 +103,30 @@ func (p *PostAPI) init() (err error) {
 	case "file":
 		apis := apisConf.GetValuesConfig(typ)
 		for _, apiKey := range apis.GetKeys() {
-			apiConf := apisConf.GetMap("file." + apiKey)
+			apiConf := apisConf.GetValuesConfig("file." + apiKey)
 			if apiConf == nil {
 				return fmt.Errorf("init api failed: %s", apiKey)
 			}
 
-			api := &api{}
+			api := &api{
+				Topic:    apiConf.GetString("topic"),
+				Metadata: make(map[string]string),
+			}
+			api.Name = apiConf.GetString("service_name")
+			api.Version = apiConf.GetString("service_version")
 
-			api.Name = apiConf.Get("service_name")
-			api.Version = apiConf.Get("service_version")
-			api.Topic = apiConf.Get("topic")
-
-			p.apis[apiConf.Get("api")] = api
+			maps := apiConf.GetMap("metadata")
+			for key, value := range maps {
+				api.Metadata[key] = fmt.Sprintf("%+v", value)
+			}
+			p.apis[apiConf.GetString("api")] = api
 		}
 	case "mysql":
 	default:
 		return fmt.Errorf("unknown apis' config type")
 	}
 
-	httpConf := p.cfg.GetConfig("http")
+	httpConf := p.cfg.GetValuesConfig("http")
 
 	urlPath := httpConf.GetString("path", "/")
 
@@ -138,8 +144,8 @@ func (p *PostAPI) init() (err error) {
 
 	p.forwardHeaders = forwardHeaders
 
-	internal.LoadCors(engine, httpConf.GetConfig("cors"))
-	internal.LoadPprof(engine, httpConf.GetConfig("pprof"))
+	internal.LoadCors(engine, httpConf.GetValuesConfig("cors"))
+	internal.LoadPprof(engine, httpConf.GetValuesConfig("pprof"))
 
 	engine.POST(urlPath, p.serve)
 
@@ -169,7 +175,7 @@ func (p *PostAPI) Start() error {
 		}
 
 		if err != http.ErrServerClosed {
-			// print log
+			p.opts.Logger.Error("http_server_closed", err)
 		}
 	}()
 	return nil
@@ -192,6 +198,7 @@ func (p *PostAPI) Stop() error {
 func (p *PostAPI) serve(ctx *gin.Context) {
 
 	apiName := ctx.Request.Header.Get("X-API")
+	clientIP := internal.GetClientIP(ctx)
 
 	r := &Response{
 		TraceID: uuid.New().String(),
@@ -203,6 +210,7 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 			return ip.String()
 		}(),
 	}
+	p.opts.Logger.Info("request", "trace_id", r.TraceID, "api_name", apiName, "client_ip", clientIP)
 	api, ok := p.apis[apiName]
 	if !ok {
 		apiErr := errcode.ErrAPINotFound.New()
@@ -210,6 +218,7 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 		r.Msg = apiErr.Error()
 		r.Namespace = apiErr.Namespace()
 		ctx.JSON(http.StatusBadRequest, r)
+		p.opts.Logger.Error("api_not_found", "trace_id", r.TraceID, "api_name", apiName, "client_ip", clientIP)
 		return
 	}
 
@@ -220,47 +229,29 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 		r.Msg = getErr.Error()
 		r.Namespace = getErr.Namespace()
 		ctx.JSON(http.StatusBadRequest, r)
-		return
-	}
-
-	pService := &proto.Service{Name: api.GetName(), Version: api.GetVersion()}
-	rService, err := service.GetService(api.GetName(), api.GetVersion())
-	if err != nil {
-		getErr := errcode.ErrGetService.New(errors.Params{"err": err.Error()})
-		r.Code = getErr.Code()
-		r.Msg = getErr.Error()
-		r.Namespace = getErr.Namespace()
-		ctx.JSON(http.StatusInternalServerError, r)
+		p.opts.Logger.Error("get_raw_data", "trace_id", r.TraceID,
+			"api_name", apiName, "client_ip", clientIP, "err", err)
 		return
 	}
 
 	msg := &message.Message{
 		Payload: proto.Payload{
-			TraceId: r.TraceID,
-			TraceIp: r.TraceIP,
-			Id:      uuid.New().String(),
-			Service: pService,
-			ReqBody: body,
-			Topic:   api.Topic,
+			TraceId:  r.TraceID,
+			TraceIp:  r.TraceIP,
+			Id:       uuid.New().String(),
+			Service:  &proto.Service{Name: api.GetName(), Version: api.GetVersion()},
+			ReqBody:  body,
+			Metadata: api.Metadata,
+			Topic:    api.Topic,
 			Header: map[string]string{
 				"Content-Type": ctx.GetHeader("Content-Type"),
 				"X-API":        ctx.GetHeader("X-API"),
-				"Client-IP":    internal.GetClientIP(ctx),
+				"Client-IP":    clientIP,
 			},
 		},
 	}
 
-	fn := rService.Route(api.Topic)
-	if fn == nil {
-		sErr := errcode.ErrGetServiceTopic.New()
-		r.Code = sErr.Code()
-		r.Msg = sErr.Error()
-		r.Namespace = sErr.Namespace()
-		ctx.JSON(200, r)
-		return
-	}
-	resp, err := fn(msg)
-
+	resp, err := service.CallServer(msg, fmt.Sprintf("%+v-%s", msg.GetService(), clientIP))
 	if err == nil {
 		r.Result = resp
 		ctx.JSON(200, r)
@@ -285,6 +276,8 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 		r.Namespace = cErr.Namespace()
 	}
 
+	p.opts.Logger.Error("call_server_failed", "trace_id", r.TraceID,
+		"api_name", apiName, "client_ip", clientIP, "err", r)
 	ctx.JSON(200, r)
 }
 
