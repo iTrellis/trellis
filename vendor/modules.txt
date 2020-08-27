@@ -41,9 +41,9 @@ github.com/go-playground/locales/currency
 github.com/go-playground/universal-translator
 # github.com/go-playground/validator/v10 v10.2.0
 github.com/go-playground/validator/v10
-# github.com/go-trellis/cache v1.1.0
+# github.com/go-trellis/cache v1.1.1
 github.com/go-trellis/cache
-# github.com/go-trellis/common v1.8.1
+# github.com/go-trellis/common v1.8.2
 github.com/go-trellis/common/builder
 github.com/go-trellis/common/data-structures/stack
 github.com/go-trellis/common/encryption/hash
@@ -52,9 +52,9 @@ github.com/go-trellis/common/event
 github.com/go-trellis/common/files
 github.com/go-trellis/common/formats
 github.com/go-trellis/common/logger
-# github.com/go-trellis/config v1.4.5
+# github.com/go-trellis/config v1.4.6
 github.com/go-trellis/config
-# github.com/go-trellis/node v1.2.1
+# github.com/go-trellis/node v1.2.2
 github.com/go-trellis/node
 # github.com/gogo/protobuf v1.2.1
 github.com/gogo/protobuf/gogoproto

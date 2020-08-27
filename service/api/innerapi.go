@@ -159,14 +159,15 @@ func (p *Service) Stop() error {
 
 func (p *Service) serve(ctx *gin.Context) {
 	msg := &message.Message{}
-	msgcodeC, err := codec.GetCodec(ctx.Request.Header.Get("content-type"))
+
+	body := &bytes.Buffer{}
+	_, err := body.ReadFrom(ctx.Request.Body)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, msg)
 		return
 	}
 
-	body := &bytes.Buffer{}
-	_, err = body.ReadFrom(ctx.Request.Body)
+	msgcodeC, err := codec.GetCodec(ctx.Request.Header.Get("content-type"))
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, msg)
 		return
@@ -181,7 +182,7 @@ func (p *Service) serve(ctx *gin.Context) {
 	p.opts.Logger.Info("request", "message", msg)
 
 	resp, err := service.CallServer(msg,
-		fmt.Sprintf("%+v-%s", msg.GetService(), msg.GetHeader()["Client-IP"]))
+		fmt.Sprintf("%s-%s", msg.GetService().String(), msg.GetHeader("Client-IP")))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, msg)
 		return

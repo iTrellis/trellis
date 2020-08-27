@@ -22,10 +22,6 @@ import (
 	"strings"
 )
 
-const (
-	defaultNamespace = "T:ERR"
-)
-
 // Errors error slice
 type Errors []error
 

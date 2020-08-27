@@ -82,7 +82,7 @@ func (p *ErrorCodeTmpl) New(v ...Params) ErrorCode {
 	if e != nil {
 		eCode.code = errorcodeParseTemplate
 
-		eCode.err = new(defaultNamespace, errID, fmt.Sprintf(
+		eCode.err = new(p.namespace, errID, fmt.Sprintf(
 			"parser template error, namespace: %s, code: %d, error: %s",
 			p.namespace, p.code, e.Error()))
 		return eCode
@@ -92,12 +92,12 @@ func (p *ErrorCodeTmpl) New(v ...Params) ErrorCode {
 	if e := t.Execute(&buf, params); e != nil {
 		eCode.code = errorcodeExecuteTemplate
 
-		eCode.err = new(defaultNamespace, errID, fmt.Sprintf(
+		eCode.err = new(p.namespace, errID, fmt.Sprintf(
 			"execute template error, namespace: %s code: %d, error: %s",
 			p.message, p.code, e.Error()))
 		return eCode
 	}
-	eCode.err = new(defaultNamespace, errID, buf.String())
+	eCode.err = new(p.namespace, errID, buf.String())
 
 	return eCode
 }

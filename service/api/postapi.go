@@ -32,7 +32,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-trellis/common/errors"
 	"github.com/go-trellis/config"
-	"github.com/google/uuid"
 )
 
 func init() {
@@ -200,15 +199,11 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 	apiName := ctx.Request.Header.Get("X-API")
 	clientIP := internal.GetClientIP(ctx)
 
+	msg := message.NewMessage()
+
 	r := &Response{
-		TraceID: uuid.New().String(),
-		TraceIP: func() string {
-			ip, err := internal.ExternalIP()
-			if err != nil {
-				return ""
-			}
-			return ip.String()
-		}(),
+		TraceID: msg.GetTraceId(),
+		TraceIP: msg.GetTraceIp(),
 	}
 	p.opts.Logger.Info("request", "trace_id", r.TraceID, "api_name", apiName, "client_ip", clientIP)
 	api, ok := p.apis[apiName]
@@ -234,24 +229,15 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 		return
 	}
 
-	msg := &message.Message{
-		Payload: proto.Payload{
-			TraceId:  r.TraceID,
-			TraceIp:  r.TraceIP,
-			Id:       uuid.New().String(),
-			Service:  &proto.Service{Name: api.GetName(), Version: api.GetVersion()},
-			ReqBody:  body,
-			Metadata: api.Metadata,
-			Topic:    api.Topic,
-			Header: map[string]string{
-				"Content-Type": ctx.GetHeader("Content-Type"),
-				"X-API":        ctx.GetHeader("X-API"),
-				"Client-IP":    clientIP,
-			},
-		},
-	}
+	msg.Service = &proto.Service{Name: api.GetName(), Version: api.GetVersion()}
+	msg.Topic = api.Topic
+	msg.Metadata = api.Metadata
+	msg.SetHeader("Content-Type", ctx.GetHeader("Content-Type"))
+	msg.SetHeader("X-API", ctx.GetHeader("X-API"))
+	msg.SetHeader("Client-IP", clientIP)
+	msg.SetBody(body)
 
-	resp, err := service.CallServer(msg, fmt.Sprintf("%+v-%s", msg.GetService(), clientIP))
+	resp, err := service.CallServer(msg, fmt.Sprintf("%s-%s", msg.GetService().String(), clientIP))
 	if err == nil {
 		r.Result = resp
 		ctx.JSON(200, r)

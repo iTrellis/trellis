@@ -1,25 +1,36 @@
 package message
 
 import (
-	"fmt"
-
 	"github.com/go-trellis/trellis/codec"
 	"github.com/go-trellis/trellis/internal"
 	"github.com/go-trellis/trellis/message/proto"
+
 	"github.com/google/uuid"
 )
 
 // Message Message
 type Message struct {
-	proto.Payload `json:",inline" yaml:",inline"`
+	*proto.Payload `json:",inline" yaml:",inline"`
 
 	codecer codec.Codec
 }
 
 // SetBody set request body
-func (p *Message) SetBody(body []byte) error {
-	p.ReqBody = body
-	return nil
+func (p *Message) SetBody(body interface{}) error {
+
+	switch bs := body.(type) {
+	case []byte:
+		p.ReqBody = bs
+		return nil
+	case string:
+		p.ReqBody = []byte(bs)
+	}
+	err := p.getCodecer()
+	if err != nil {
+		return err
+	}
+	p.ReqBody, err = p.codecer.Marshal(body)
+	return err
 }
 
 // ToObject codec with request body to object
@@ -35,11 +46,12 @@ func (p *Message) getCodecer() error {
 		return nil
 	}
 
-	header := p.GetHeader()
-	if header == nil {
-		return fmt.Errorf("header is nil")
+	header := p.GetHeader("Content-Type")
+	if header == "" {
+		// default json
+		header = codec.JSON
 	}
-	c, err := codec.GetCodec(header["Content-Type"])
+	c, err := codec.GetCodec(header)
 	if err != nil {
 		return err
 	}
@@ -48,9 +60,10 @@ func (p *Message) getCodecer() error {
 	return nil
 }
 
+// NewMessage new message
 func NewMessage() *Message {
 	return &Message{
-		Payload: proto.Payload{
+		Payload: &proto.Payload{
 			TraceId: uuid.New().String(),
 			TraceIp: func() string {
 				ip, err := internal.ExternalIP()
@@ -59,20 +72,33 @@ func NewMessage() *Message {
 				}
 				return ip.String()
 			}(),
-			Id: uuid.New().String(),
+			Id:     uuid.New().String(),
+			Header: make(map[string]string),
 		},
 	}
 }
 
+// Copy copy message by base message
 func (p *Message) Copy() *Message {
 	if p == nil {
 		return nil
 	}
 	return &Message{
-		Payload: proto.Payload{
+		Payload: &proto.Payload{
 			TraceId: p.TraceId,
 			TraceIp: p.TraceIp,
 			Id:      uuid.New().String(),
+			Header:  p.Header,
 		},
 	}
+}
+
+// GetHeader get header value with key
+func (p *Message) GetHeader(key string) string {
+	return p.Header[key]
+}
+
+// SetHeader set header value with key
+func (p *Message) SetHeader(key, value string) {
+	p.Header[key] = value
 }

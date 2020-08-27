@@ -113,7 +113,7 @@ func NewErrorCode(ofs ...OptionFunc) ErrorCode {
 		o(opts)
 	}
 	if opts.namespace == "" {
-		opts.namespace = defaultNamespace
+		opts.namespace = "T:E"
 	}
 	if opts.id == "" {
 		opts.id = uuid.New().String()

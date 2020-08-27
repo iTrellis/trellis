@@ -5,7 +5,6 @@
 package cache
 
 import (
-	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -47,11 +46,9 @@ func (p *gemCache) GetTableCache(tab string) (TableCache, bool) {
 func (p *gemCache) New(tab string, options ...Option) (err error) {
 	p.Lock()
 	defer p.Unlock()
-	fmt.Println("in", tab)
 
 	tabCache := p.getTable(tab)
 	if tabCache != nil {
-		fmt.Println(tab, tabCache)
 		return ErrTableExists
 	}
 

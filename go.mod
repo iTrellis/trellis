@@ -9,10 +9,10 @@ require (
 	github.com/gin-contrib/cors v1.3.1
 	github.com/gin-contrib/pprof v1.3.0
 	github.com/gin-gonic/gin v1.6.3
-	github.com/go-trellis/cache v1.1.0
-	github.com/go-trellis/common v1.8.1
-	github.com/go-trellis/config v1.4.5
-	github.com/go-trellis/node v1.2.1
+	github.com/go-trellis/cache v1.1.1
+	github.com/go-trellis/common v1.8.2
+	github.com/go-trellis/config v1.4.6
+	github.com/go-trellis/node v1.2.2
 	github.com/golang/protobuf v1.4.2
 	github.com/google/uuid v1.1.1
 	github.com/spf13/cobra v1.0.0
