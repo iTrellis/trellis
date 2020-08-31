@@ -43,7 +43,7 @@ var useFuncs = make(map[string]gin.HandlerFunc)
 // RegistUseFuncs 注册
 func RegistUseFuncs(name string, fn gin.HandlerFunc) error {
 	_, ok := useFuncs[name]
-	if !ok {
+	if ok {
 		return fmt.Errorf("use funcs (%s) is already exist", name)
 	}
 	useFuncs[name] = fn
