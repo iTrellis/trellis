@@ -91,6 +91,8 @@ func (p *Service) init() (err error) {
 
 	urlPath := httpConf.GetString("path", "/")
 
+	staticPaths := httpConf.GetMap("static_path")
+
 	engine := gin.New()
 
 	engine.Use(gin.Recovery())
@@ -99,11 +101,15 @@ func (p *Service) init() (err error) {
 		engine.Use(fn)
 	}
 
-	address := httpConf.GetString("address", ":8080")
+	for path, static := range staticPaths {
+		s, ok := static.(string)
+		if !ok {
+			return fmt.Errorf("static path is invalid: %s", path)
+		}
+		engine.Static(path, s)
+	}
 
-	forwardHeaders := httpConf.GetStringList("forward.headers")
-
-	p.forwardHeaders = forwardHeaders
+	p.forwardHeaders = httpConf.GetStringList("forward.headers")
 
 	internal.LoadCors(engine, httpConf.GetValuesConfig("cors"))
 	internal.LoadPprof(engine, httpConf.GetValuesConfig("pprof"))
@@ -112,7 +118,7 @@ func (p *Service) init() (err error) {
 	engine.POST(urlPath, p.serve)
 
 	p.srv = &http.Server{
-		Addr:    address,
+		Addr:    httpConf.GetString("address", ":8080"),
 		Handler: engine,
 	}
 
@@ -179,6 +185,10 @@ func (p *Service) serve(ctx *gin.Context) {
 		return
 	}
 
+	for _, h := range p.forwardHeaders {
+		msg.SetHeader(h, ctx.GetHeader(h))
+	}
+
 	p.opts.Logger.Info("request", "message", msg)
 
 	resp, err := service.CallServer(msg,
@@ -187,6 +197,7 @@ func (p *Service) serve(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, msg)
 		return
 	}
+
 	bs, err := msgcodeC.Marshal(resp)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, msg)
