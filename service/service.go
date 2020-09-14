@@ -10,7 +10,6 @@ import (
 	"github.com/go-trellis/trellis/configure"
 	"github.com/go-trellis/trellis/internal"
 	"github.com/go-trellis/trellis/message"
-	"github.com/go-trellis/trellis/message/proto"
 
 	"github.com/go-trellis/common/logger"
 	"github.com/go-trellis/config"
@@ -98,30 +97,6 @@ func New(name, version string, opts ...OptionFunc) (Service, error) {
 		return nil, fmt.Errorf("server '%s' not exist", serviceKey)
 	}
 	return fn(opts...)
-}
-
-// CallServer 请求服务
-func CallServer(msg *message.Message, keys ...string) (interface{}, error) {
-	path := internal.WorkerTrellisPath(msg.GetService().GetName(), msg.GetService().GetVersion())
-	runner.locker.RLock()
-	nm := runner.nodeManagers[path]
-	runner.locker.RUnlock()
-	node, ok := nm.NodeFor()
-	if !ok {
-		return nil, fmt.Errorf("not found service")
-	}
-
-	protocol := node.Metadata.Get("protocol")
-
-	switch proto.Protocol(proto.Protocol_value[protocol]) {
-	case proto.Protocol_LOCAL:
-		return runner.router.CallService(msg)
-	case proto.Protocol_HTTP:
-		// TODO
-	case proto.Protocol_GRPC:
-		// TODO
-	}
-	return nil, fmt.Errorf("not found service")
 }
 
 // BlockStop 阻断式停止

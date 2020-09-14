@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 
+	"github.com/go-trellis/trellis/message"
 	"github.com/go-trellis/trellis/service"
 )
 
@@ -26,6 +27,16 @@ func (p *ServiceB) Stop() error {
 	return nil
 }
 
-func (p *ServiceB) Route(string) service.HandlerFunc {
+func (p *ServiceB) Route(topic string) service.HandlerFunc {
+	switch topic {
+	case "test":
+		return func(msg *message.Message) (interface{}, error) {
+			req := &Ping{}
+			if err := msg.ToObject(req); err != nil {
+				return nil, err
+			}
+			return Pong{Name: fmt.Sprintf("serviceB test: %s", req.Name)}, nil
+		}
+	}
 	return nil
 }

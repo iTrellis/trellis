@@ -30,9 +30,9 @@ func init() {
 }
 
 // Init initial register
-func (p *worker) Init(_ *registry.RegistOption, log logger.Logger) (err error) {
+func (p *worker) Init(opts *registry.RegistOption) (err error) {
 
-	p.logger = log
+	p.logger = opts.Logger
 
 	p.Cache, err = cache.NewTableCache("cache_register")
 	if err != nil {

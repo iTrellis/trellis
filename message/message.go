@@ -20,16 +20,17 @@ func (p *Message) SetBody(body interface{}) error {
 
 	switch bs := body.(type) {
 	case []byte:
-		p.ReqBody = bs
+		p.Payload.ReqBody = bs
 		return nil
 	case string:
-		p.ReqBody = []byte(bs)
+		p.Payload.ReqBody = []byte(bs)
+		return nil
 	}
 	err := p.getCodecer()
 	if err != nil {
 		return err
 	}
-	p.ReqBody, err = p.codecer.Marshal(body)
+	p.Payload.ReqBody, err = p.codecer.Marshal(body)
 	return err
 }
 
@@ -38,7 +39,7 @@ func (p *Message) ToObject(obj interface{}) error {
 	if err := p.getCodecer(); err != nil {
 		return err
 	}
-	return p.codecer.Unmarshal(p.GetReqBody(), obj)
+	return p.codecer.Unmarshal(p.Payload.GetReqBody(), obj)
 }
 
 func (p *Message) getCodecer() error {
@@ -85,20 +86,20 @@ func (p *Message) Copy() *Message {
 	}
 	return &Message{
 		Payload: &proto.Payload{
-			TraceId: p.TraceId,
-			TraceIp: p.TraceIp,
+			TraceId: p.Payload.TraceId,
+			TraceIp: p.Payload.TraceIp,
 			Id:      uuid.New().String(),
-			Header:  p.Header,
+			Header:  p.Payload.Header,
 		},
 	}
 }
 
 // GetHeader get header value with key
 func (p *Message) GetHeader(key string) string {
-	return p.Header[key]
+	return p.Payload.Header[key]
 }
 
 // SetHeader set header value with key
 func (p *Message) SetHeader(key, value string) {
-	p.Header[key] = value
+	p.Payload.Header[key] = value
 }

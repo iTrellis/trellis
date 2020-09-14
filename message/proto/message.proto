@@ -19,26 +19,29 @@ message Service {
     string version = 2;
 }
 
-message RegistOption {
-    string name = 1;
-    string version = 2;
-    string protocol = 3;
-    string domain = 4;
-    uint32 weight = 5;
-    map<string, string> metadata = 6;
-}
+// message RegistOption {
+//    string name = 1;
+//    string version = 2;
+//    string protocol = 3;
+//    string domain = 4;
+//    uint32 weight = 5;
+//    map<string, string> metadata = 6;
+// }
 
 message Payload {
     string trace_id = 1;
-    string id = 2;
-    Service Service = 3;
-    string topic = 4;
-    map<string, string> header = 5;
-    map<string, string> metadata = 6;
+    string trace_ip = 2;
+    string id = 3;
+    Service Service = 4;
+    string topic = 5;
+    map<string, string> header = 6;
     bytes req_body = 7;
-    string trace_ip = 8;
+}
+
+message Callback {
+    bytes body = 1;
 }
 
 service RPCService {
-    rpc Call (Payload) returns (Payload);
+    rpc Call (Payload) returns (Callback);
 }

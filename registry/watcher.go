@@ -1,8 +1,11 @@
 package registry
 
 import (
+	"strings"
+
 	"github.com/go-trellis/trellis/configure"
 	"github.com/go-trellis/trellis/internal"
+	"github.com/go-trellis/trellis/message/proto"
 
 	"github.com/go-trellis/node"
 )
@@ -43,9 +46,8 @@ func (p *Result) ToNode() *node.Node {
 	return &node.Node{
 		ID:     internal.WorkerTrellisDomainPath(p.Service.Name, p.Service.Version, p.Service.Domain),
 		Weight: p.Service.Weight,
-		Value:  p.Service.String(),
+		Value:  p.Service.Domain,
 		Metadata: map[string]interface{}{
-			"protocol": p.Service.Protocol,
-			"domain":   p.Service.Domain},
-	}
+			"protocol": proto.Protocol(proto.Protocol_value[strings.ToUpper(p.Service.Protocol)]),
+		}}
 }

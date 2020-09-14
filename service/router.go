@@ -3,6 +3,8 @@ package service
 import (
 	"fmt"
 
+	"github.com/go-trellis/node"
+	"github.com/go-trellis/trellis/clients"
 	"github.com/go-trellis/trellis/configure"
 	"github.com/go-trellis/trellis/errcode"
 	"github.com/go-trellis/trellis/internal"
@@ -20,10 +22,10 @@ import (
 type Router interface {
 	NewService(...RouterOptionFunc) error
 	StopService(name, version string) error
-	GetService(name, version string) (Service, error)
-	CallService(msg *message.Message) (resp interface{}, err error)
 	Run() error
 	Stop() error
+
+	clients.Caller
 }
 
 // RouterOptionFunc 配置函数定义
@@ -77,9 +79,7 @@ func (p *router) NewService(opts ...RouterOptionFunc) (err error) {
 		return err
 	}
 
-	var s Service
-
-	s, err = New(p.opts.cfg.GetName(), p.opts.cfg.GetVersion(),
+	s, err := New(p.opts.cfg.GetName(), p.opts.cfg.GetVersion(),
 		Config(p.opts.cfg.Options),
 		Logger(p.opts.logger.With(url)),
 	)
@@ -156,8 +156,8 @@ func (p *router) GetService(name, version string) (Service, error) {
 	return s, nil
 }
 
-// GetService get service
-func (p *router) CallService(msg *message.Message) (resp interface{}, err error) {
+// CallService call service
+func (p *router) CallService(_ *node.Node, msg *message.Message) (interface{}, error) {
 	s, err := p.GetService(msg.GetService().GetName(), msg.GetService().GetVersion())
 	if err != nil {
 		return nil, err

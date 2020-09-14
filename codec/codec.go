@@ -66,3 +66,19 @@ func RegisterCodec(name string, fn NewCodecFunc) {
 
 	codecs[name] = fn
 }
+
+func Unmarshal(name string, body []byte, obj interface{}) error {
+	c, err := GetCodec(name)
+	if err != nil {
+		return err
+	}
+	return c.Unmarshal(body, obj)
+}
+
+func Marshal(name string, obj interface{}) ([]byte, error) {
+	c, err := GetCodec(name)
+	if err != nil {
+		return nil, err
+	}
+	return c.Marshal(obj)
+}

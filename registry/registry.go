@@ -1,43 +1,21 @@
 package registry
 
 import (
-	"fmt"
 	"time"
 
+	"github.com/go-trellis/common/logger"
 	"github.com/go-trellis/trellis/configure"
 	"github.com/go-trellis/trellis/message/proto"
-
-	"github.com/go-trellis/common/logger"
 )
 
 // NewRegistryFunc 注册机生成函数
 type NewRegistryFunc = func() Registry
 
-var mapRegistries = make(map[proto.RegisterType]NewRegistryFunc)
-
-// Regist 注册注册机
-func Regist(name proto.RegisterType, fn NewRegistryFunc) {
-	_, ok := mapRegistries[name]
-	if ok {
-		panic(fmt.Errorf("registry'name (%s) is already exist", name))
-	}
-	mapRegistries[name] = fn
-}
-
-// GetNewRegistryFunc 获取注册机生成函数
-func GetNewRegistryFunc(name proto.RegisterType) (NewRegistryFunc, error) {
-	r, ok := mapRegistries[name]
-	if !ok {
-		return nil, fmt.Errorf("registry'name (%s) isnot exist", name)
-	}
-	return r, nil
-}
-
 // Registry the registry provides an interface for service discovery
 // and an abstraction over varying implementations
 // {consul, etcd, zookeeper, ...}
 type Registry interface {
-	Init(option *RegistOption, log logger.Logger) error
+	Init(*RegistOption) error
 	// 注册的不只是服务本身，还需要第三方客户端的配置
 	Regist(*configure.RegistService) error
 	Revoke(*configure.RegistService) error
@@ -49,6 +27,8 @@ type Registry interface {
 
 // RegistOption the configure of registry
 type RegistOption struct {
+	RegisterType proto.RegisterType
+
 	// registry url
 	Endpoint string
 	// expired time
@@ -57,4 +37,6 @@ type RegistOption struct {
 	Heartbeat time.Duration
 	// allow failed to regist server and retry times; -1 alaways retry
 	RetryTimes uint32
+
+	Logger logger.Logger
 }

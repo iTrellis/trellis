@@ -16,17 +16,17 @@ project:
             version: v1
             options:
                 x: "y"
+            registry:
+                name: etcd-test
+                domain: http://127.0.0.1:8081/v1
+                weight: 10 ## default 1
+                protocol: http
     registries:
         etcd-test:
-            type: 1
+            type: etcd
             options:
                 endpoint: 127.0.0.1:2379
                 heartbeat: 15s
                 ttl: 10s
                 timeout: 10s
                 retry_times: 1
-            watchers:
-                -
-                    name: serviceA 
-                    version: v1
-                    load_balancing: 1

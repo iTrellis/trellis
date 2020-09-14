@@ -28,12 +28,24 @@ func (p *RemoteHTTP) Stop() error {
 	return nil
 }
 
+type ReqRemote struct {
+	Name string `json:"name"`
+}
+
+type RespRemote struct {
+	Msg string `json:"message"`
+}
+
 func (p *RemoteHTTP) Route(topic string) service.HandlerFunc {
 	switch topic {
 	case "remote":
 		return func(msg *message.Message) (interface{}, error) {
+			req := &ReqRemote{}
+			if err := msg.ToObject(req); err != nil {
+				return nil, err
+			}
 			fmt.Println(string(msg.GetReqBody()))
-			return []byte("RemoteHTTP ark"), nil
+			return &RespRemote{Msg: fmt.Sprintf("remote: %s", req.Name)}, nil
 		}
 	}
 	return nil

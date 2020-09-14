@@ -65,7 +65,6 @@ func (p *watcher) Next(ch chan *registry.Result) {
 			}
 
 			for _, ev := range wresp.Events {
-				var action string
 
 				switch ev.Type {
 				case clientv3.EventTypePut:
@@ -76,14 +75,14 @@ func (p *watcher) Next(ch chan *registry.Result) {
 						continue
 					}
 					if ev.IsCreate() {
-						action = registry.ActionCreate
+						resp.Action = registry.ActionCreate
 					} else if ev.IsModify() {
-						action = registry.ActionUpdate
+						resp.Action = registry.ActionUpdate
 					}
 
 					resp.Service = services
 				case clientv3.EventTypeDelete:
-					action = registry.ActionDelete
+					resp.Action = registry.ActionDelete
 					services, err := p.decode(ev.Kv.Value)
 					if err != nil {
 						resp.Err = err
@@ -94,8 +93,6 @@ func (p *watcher) Next(ch chan *registry.Result) {
 				default:
 
 				}
-
-				resp.Action = action
 
 				ch <- resp
 			}

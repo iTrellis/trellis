@@ -38,9 +38,9 @@ func init() {
 }
 
 // Init initial register
-func (p *Register) Init(option *registry.RegistOption, log logger.Logger) (err error) {
+func (p *Register) Init(option *registry.RegistOption) (err error) {
 	p.option = option
-	p.logger = log.With("register", "etcd")
+	p.logger = option.Logger.With("register", "etcd")
 
 	// get endpoints for register dial address
 	if p.client, err = clientv3.New(clientv3.Config{
@@ -92,10 +92,10 @@ func (p *Register) Regist(s *configure.RegistService) (err error) {
 		var count uint32
 		for {
 			if err = p.regist(w); err != nil {
-				if p.option.RetryTimes < 0 {
+				if p.option.RetryTimes == 0 {
 					continue
 				}
-				if p.option.RetryTimes < count {
+				if p.option.RetryTimes <= count {
 					panic(fmt.Errorf("%s regist into etcd failed times above: %d, %v", w.fullpath, count, err))
 				}
 				count++

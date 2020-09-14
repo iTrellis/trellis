@@ -6,7 +6,6 @@ A micro service framework, which can build some services (component) into one se
 
 ## SOMETHING TODO
 
-* caller: http | grpc ...
 * regitry: dns | consul ...
 * calling chain service.
 * config service: such as: build、 run configures.

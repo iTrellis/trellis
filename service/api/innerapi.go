@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-trellis/trellis/clients"
 	"github.com/go-trellis/trellis/codec"
 	"github.com/go-trellis/trellis/internal"
 	"github.com/go-trellis/trellis/message"
@@ -191,22 +192,14 @@ func (p *Service) serve(ctx *gin.Context) {
 
 	p.opts.Logger.Info("request", "message", msg)
 
-	resp, err := service.CallServer(msg,
+	resp, err := clients.CallService(msg,
 		fmt.Sprintf("%s-%s", msg.GetService().String(), msg.GetHeader("Client-IP")))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, msg)
 		return
 	}
 
-	bs, err := msgcodeC.Marshal(resp)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, msg)
-		return
-	}
-
-	msg.SetBody(bs)
-
-	ctx.JSON(200, msg)
+	ctx.JSON(200, resp)
 }
 
 // Route 路由

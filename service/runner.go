@@ -1,11 +1,12 @@
 package service
 
 import (
-	"fmt"
-	"sync"
+	"strings"
 
+	"github.com/go-trellis/trellis/clients"
 	"github.com/go-trellis/trellis/configure"
 	"github.com/go-trellis/trellis/internal"
+	"github.com/go-trellis/trellis/message/proto"
 	"github.com/go-trellis/trellis/registry"
 
 	// 注册机
@@ -20,17 +21,9 @@ import (
 
 // Runner 启动对象
 type Runner struct {
-	locker sync.RWMutex
-
-	conf *configure.Project
-
+	conf   *configure.Project
 	logger logger.Logger
-
 	router Router
-
-	nodeManagers map[string]node.Manager
-
-	registries map[string]registry.Registry
 }
 
 var runner *Runner
@@ -43,9 +36,6 @@ func NewRunner(cfg *configure.Project, l logger.Logger) (*Runner, error) {
 		router: NewRouter(),
 
 		logger: l,
-
-		nodeManagers: make(map[string]node.Manager),
-		registries:   make(map[string]registry.Registry),
 	}
 
 	if err := t.initRegistries(); err != nil {
@@ -86,11 +76,13 @@ func (p *Runner) newServices() error {
 			ID:       path,
 			Weight:   1,
 			Value:    service.String(),
-			Metadata: map[string]interface{}{"protocol": "cache"},
+			Metadata: map[string]interface{}{"protocol": proto.Protocol_LOCAL},
 		})
 
-		p.setNodeManager(path, nm)
+		registry.SetNodeManager(path, nm)
 	}
+
+	clients.RegistCaller(proto.Protocol_LOCAL, p.router)
 	return nil
 }
 
@@ -104,19 +96,14 @@ func (p *Runner) registServices() error {
 		}
 		p.logger.Info("regist service start", name, service.Registry)
 
-		r, ok := p.registries[service.Registry.Name]
-		if !ok {
-			return fmt.Errorf("not found service(%s)'s registry (%s)", service.Name, service.Registry.Name)
-		}
 		regConf := &configure.RegistService{
 			Name:     service.Name,
 			Version:  service.GetVersion(),
 			Domain:   service.Registry.Domain,
 			Protocol: service.Registry.Protocol,
 			Weight:   service.Registry.Weight,
-			Metadata: service.Registry.Metadata,
 		}
-		if err := r.Regist(regConf); err != nil {
+		if err := registry.RegistService(service.Registry.Name, regConf); err != nil {
 			p.logger.Error("regist service failed", regConf, err)
 			return err
 		}
@@ -140,118 +127,40 @@ func (p *Runner) Stop() error {
 		errs = append(errs, err)
 	}
 
-	for _, r := range p.registries {
-		r.Stop()
-	}
-
+	registry.Stop()
 	return errs
 }
 
 // runRegistries 启动注册器
 func (p *Runner) initRegistries() (err error) {
 
-	fnc := func(w registry.Watcher) error {
-		ch := make(chan *registry.Result)
-		go w.Next(ch)
-
-		for {
-			result := <-ch
-
-			if result.Err != nil {
-				p.logger.Error("get registry result failed", result, result.Err)
-				continue
-			}
-
-			path := internal.WorkerTrellisPath(result.Service.Name, result.Service.Version)
-
-			nm, ok := p.getNodeManager(path)
-
-			if !ok {
-				nm = node.New(result.NodeType, path)
-			}
-
-			nd := result.ToNode()
-			p.logger.Info("get registry node", result, nd)
-			switch result.Action {
-			case registry.ActionCreate, registry.ActionUpdate:
-				nm.Add(nd)
-			case registry.ActionDelete:
-				nm.RemoveByID(nd.ID)
-			default:
-			}
-
-			p.setNodeManager(path, nm)
-
-			nm.PrintNodes()
-		}
-	}
-
 	for name, reg := range p.conf.Registries {
-
 		retryTimes, _ := reg.Options.Int("retry_times")
 		rOpts := &registry.RegistOption{
-			Endpoint:   reg.Options.Get("endpoint"),
-			TTL:        formats.ParseStringTime(reg.Options.Get("ttl")),
-			Heartbeat:  formats.ParseStringTime(reg.Options.Get("heartbeat")),
-			RetryTimes: uint32(retryTimes),
+			RegisterType: proto.RegisterType(proto.RegisterType_value[strings.ToUpper(reg.Type)]),
+			Endpoint:     reg.Options.Get("endpoint"),
+			TTL:          formats.ParseStringTime(reg.Options.Get("ttl")),
+			Heartbeat:    formats.ParseStringTime(reg.Options.Get("heartbeat")),
+			RetryTimes:   uint32(retryTimes),
+			Logger:       p.logger,
 		}
 		p.logger.Debug("new registry", rOpts)
 
-		fn, err := registry.GetNewRegistryFunc(reg.Type)
-		if err != nil {
-			p.logger.Error("failed get registry func", reg.Type, err)
-			return err
-		}
-
-		r := fn()
-
-		if err := r.Init(rOpts, p.logger); err != nil {
+		if err := registry.NewRegistry(name, rOpts); err != nil {
 			p.logger.Error("failed new registry", rOpts.Endpoint, err)
 			return err
 		}
 
-		// 注册服务
-		for _, serv := range reg.Services {
-			p.logger.Debug("regist service", serv.String())
-			if err = r.Regist(serv); err != nil {
-				p.logger.Error("regist service failed", serv.String(), err)
-				return err
-			}
-		}
-
 		for _, wConfig := range reg.Watchers {
-			p.logger.Debug("new watcher", wConfig)
-			watcher, err := r.Watcher(wConfig)
-			if err != nil {
+
+			if err = registry.NewRegistryWatcher(name, wConfig); err != nil {
 				p.logger.Error("new watcher failed", *wConfig, err)
 				return err
 			}
-
-			go fnc(watcher)
 		}
 
-		p.logger.Info("initical registry ok", name, reg)
+		p.logger.Info("initial registry ok", name, reg)
 
-		p.registries[name] = r
 	}
 	return nil
-}
-
-func (p *Runner) setNodeManager(key string, nm node.Manager) {
-	p.locker.Lock()
-	p.nodeManagers[key] = nm
-	p.locker.Unlock()
-}
-
-func (p *Runner) delNodeManager(key string) {
-	p.locker.Lock()
-	delete(p.nodeManagers, key)
-	p.locker.Unlock()
-}
-
-func (p *Runner) getNodeManager(key string) (node.Manager, bool) {
-	p.locker.RLock()
-	nm, ok := p.nodeManagers[key]
-	p.locker.RUnlock()
-	return nm, ok
 }

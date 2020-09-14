@@ -3,6 +3,11 @@ package services
 import (
 	"fmt"
 
+	"github.com/go-trellis/trellis/codec"
+
+	"github.com/go-trellis/trellis/clients"
+	"github.com/go-trellis/trellis/message/proto"
+
 	"github.com/go-trellis/trellis/message"
 	"github.com/go-trellis/trellis/service"
 )
@@ -40,20 +45,67 @@ func (p *ServiceA) Route(topic string) service.HandlerFunc {
 	switch topic {
 	case "test1":
 		return func(msg *message.Message) (interface{}, error) {
-			fmt.Println(string(msg.ReqBody))
 			req := &Ping{}
 			if err := msg.ToObject(req); err != nil {
 				return nil, err
 			}
 			return Pong{Name: fmt.Sprintf("hello1: %s", req.Name)}, nil
 		}
-	case "test2":
+	case "test_remote":
 		return func(msg *message.Message) (interface{}, error) {
 			req := &Ping{}
 			if err := msg.ToObject(req); err != nil {
 				return nil, err
 			}
-			return Pong{Name: fmt.Sprintf("hello2: %s", req.Name)}, nil
+
+			msgTo := msg.Copy()
+
+			msgTo.Service = &proto.Service{Name: "remote_http", Version: "v1"}
+			msgTo.Topic = "remote"
+
+			if err := msgTo.SetBody(ReqRemote{Name: req.Name}); err != nil {
+				return nil, err
+			}
+
+			body, err := clients.CallService(msgTo)
+			if err != nil {
+				return nil, err
+			}
+
+			r := &RespRemote{}
+
+			if err := codec.Unmarshal(msgTo.GetHeader("Content-Type"), body.([]byte), r); err != nil {
+				return nil, err
+			}
+			return Pong{Name: r.Msg}, nil
+		}
+	case "test_grpc":
+		return func(msg *message.Message) (interface{}, error) {
+			req := &Ping{}
+			if err := msg.ToObject(req); err != nil {
+				return nil, err
+			}
+
+			msgTo := msg.Copy()
+
+			msgTo.Service = &proto.Service{Name: "remote_grpc", Version: "v1"}
+			msgTo.Topic = "remote"
+
+			if err := msgTo.SetBody(ReqRemote{Name: req.Name}); err != nil {
+				return nil, err
+			}
+
+			body, err := clients.CallService(msgTo)
+			if err != nil {
+				return nil, err
+			}
+
+			r := &RespRemote{}
+
+			if err := codec.Unmarshal(msgTo.GetHeader("Content-Type"), body.([]byte), r); err != nil {
+				return nil, err
+			}
+			return Pong{Name: r.Msg}, nil
 		}
 	}
 	return nil

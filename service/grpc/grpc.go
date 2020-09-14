@@ -15,27 +15,29 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-package service
+package grpc
 
 import (
 	"context"
 	"net"
 
+	"github.com/go-trellis/trellis/clients"
+	"github.com/go-trellis/trellis/codec"
+	"github.com/go-trellis/trellis/message"
 	"github.com/go-trellis/trellis/message/proto"
 	"github.com/go-trellis/trellis/service"
 
-	"google.golang.org/grpc"
+	ggrpc "google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
 
 func init() {
-	service.RegistNewServiceFunc("trellis-trans-grpc", "v1", NewService)
+	service.RegistNewServiceFunc("trellis-grpcserver", "v1", NewService)
 }
 
-// GrpcService api service
-type GrpcService struct {
-	debug bool
-	opts  service.Options
+// Service api service
+type Service struct {
+	opts service.Options
 
 	Address string
 }
@@ -43,7 +45,7 @@ type GrpcService struct {
 // NewService new api service
 func NewService(opts ...service.OptionFunc) (service.Service, error) {
 
-	s := &GrpcService{}
+	s := &Service{}
 
 	for _, o := range opts {
 		o(&s.opts)
@@ -57,18 +59,20 @@ func NewService(opts ...service.OptionFunc) (service.Service, error) {
 	return s, nil
 }
 
-func (p *GrpcService) init() (err error) {
+func (p *Service) init() (err error) {
+	p.Address = p.opts.Config.Get("addr")
 	return
 }
 
 // Start start service
-func (p *GrpcService) Start() error {
+// TODO server options
+func (p *Service) Start() error {
 	lis, err := net.Listen("tcp", p.Address)
 	if err != nil {
 		return err
 	}
 
-	s := grpc.NewServer()
+	s := ggrpc.NewServer()
 	proto.RegisterRPCServiceServer(s, p)
 	reflection.Register(s)
 
@@ -82,18 +86,30 @@ func (p *GrpcService) Start() error {
 }
 
 // Stop stop service
-func (p *GrpcService) Stop() error {
+func (p *Service) Stop() error {
 	return nil
 }
 
 // Route 路由
-func (p *GrpcService) Route(string) service.HandlerFunc {
-	// async中处理callback
+func (p *Service) Route(string) service.HandlerFunc {
 	return nil
 }
 
 // Call 路由
-func (p *GrpcService) Call(context.Context, *proto.Payload) (*proto.Payload, error) {
+func (p *Service) Call(_ context.Context, payload *proto.Payload) (*proto.Callback, error) {
 	// async中处理callback
-	return nil, nil
+	msg := &message.Message{}
+	msg.Payload = payload
+
+	resp, err := clients.CallService(msg)
+	if err != nil {
+		return nil, err
+	}
+	cb := &proto.Callback{}
+	cb.Body, err = codec.Marshal(msg.GetHeader("Content-Type"), resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return cb, nil
 }

@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-trellis/trellis/clients"
 	"github.com/go-trellis/trellis/errcode"
 	"github.com/go-trellis/trellis/internal"
 	"github.com/go-trellis/trellis/message"
@@ -54,14 +55,14 @@ type PostAPI struct {
 
 type api struct {
 	proto.Service
-	Topic    string
-	Metadata map[string]string
+	Topic string
 }
 
 // Response response
 type Response struct {
 	TraceID   string      `json:"trace_id"`
 	TraceIP   string      `json:"trace_ip"`
+	Host      string      `json:"host"`
 	Code      uint64      `json:"code"`
 	Namespace string      `json:"namespace,omitempty"`
 	Msg       string      `json:"msg,omitempty"`
@@ -107,17 +108,10 @@ func (p *PostAPI) init() (err error) {
 				return fmt.Errorf("init api failed: %s", apiKey)
 			}
 
-			api := &api{
-				Topic:    apiConf.GetString("topic"),
-				Metadata: make(map[string]string),
-			}
+			api := &api{Topic: apiConf.GetString("topic")}
 			api.Name = apiConf.GetString("service_name")
 			api.Version = apiConf.GetString("service_version")
 
-			maps := apiConf.GetMap("metadata")
-			for key, value := range maps {
-				api.Metadata[key] = fmt.Sprintf("%+v", value)
-			}
 			p.apis[apiConf.GetString("api")] = api
 		}
 	case "mysql":
@@ -238,14 +232,13 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 
 	msg.Service = &proto.Service{Name: api.GetName(), Version: api.GetVersion()}
 	msg.Topic = api.Topic
-	msg.Metadata = api.Metadata
 
 	msg.SetHeader("Client-IP", clientIP)
 	for _, h := range p.forwardHeaders {
 		msg.SetHeader(h, ctx.GetHeader(h))
 	}
 
-	resp, err := service.CallServer(msg, fmt.Sprintf("%s-%s", msg.GetService().String(), clientIP))
+	resp, err := clients.CallService(msg, fmt.Sprintf("%s-%s", msg.GetService().String(), clientIP))
 	if err == nil {
 		r.Result = resp
 		ctx.JSON(200, r)

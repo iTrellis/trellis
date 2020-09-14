@@ -63,30 +63,28 @@ type Service struct {
 }
 
 type ServiceRegistryOptions struct {
-	Name     string            `yaml:"name"`
-	Domain   string            `yaml:"domain"`
-	Protocol string            `yaml:"protocol"`
-	Weight   uint32            `yaml:"weight"`
-	Metadata map[string]string `yaml:"metadata"`
+	Name     string `yaml:"name"`
+	Domain   string `yaml:"domain"`
+	Protocol string `yaml:"protocol"`
+	Weight   uint32 `yaml:"weight"`
 }
 
 // Registry run configure
 type Registry struct {
-	Type    proto.RegisterType `yaml:"type"`
-	Options config.Options     `yaml:"options"`
+	Type string `json:"type"`
 
-	Services []*RegistService `yaml:"services"`
-	Watchers []*Watcher       `yaml:"watchers"`
+	Options config.Options `yaml:"options"`
+
+	Watchers []*Watcher `yaml:"watchers"`
 }
 
 // RegistService service which should regist into registry
 type RegistService struct {
-	Name     string            `yaml:"name" json:"name"`
-	Version  string            `yaml:"version" json:"version"`
-	Domain   string            `yaml:"domain" json:"domain"`
-	Protocol string            `yaml:"protocal" json:"protocal"`
-	Weight   uint32            `yaml:"weight" json:"weight"`
-	Metadata map[string]string `yaml:"metadata" json:"metadata"`
+	Name     string `yaml:"name" json:"name"`
+	Version  string `yaml:"version" json:"version"`
+	Domain   string `yaml:"domain" json:"domain"`
+	Protocol string `yaml:"protocal" json:"protocal"`
+	Weight   uint32 `yaml:"weight" json:"weight"`
 }
 
 func (p *RegistService) String() string {

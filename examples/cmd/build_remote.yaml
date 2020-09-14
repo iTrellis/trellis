@@ -20,5 +20,5 @@ project:
     services:
         trellis-innerapi:
             url: github.com/go-trellis/trellis/service/api
-        remoteA:
+        remote_http:
             url: github.com/go-trellis/trellis/examples/services

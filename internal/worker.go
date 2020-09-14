@@ -18,6 +18,9 @@ func WorkerPath(schema, name, version string) string {
 
 // WorkerDomainPath 工作路径
 func WorkerDomainPath(schema, name, version, domain string) string {
+	domain = strings.Replace(domain, ".", "_", -1)
+	domain = strings.Replace(domain, ":", "_", -1)
+	domain = strings.Replace(domain, "/", "_", -1)
 	return fmt.Sprintf("%s/%s/%s/%s", schema, name, version, domain)
 }
 
@@ -33,6 +36,9 @@ func WorkerETCDPath(name, version string) string {
 
 // WorkerTrellisDomainPath 工作路径
 func WorkerTrellisDomainPath(name, version, domain string) string {
+	domain = strings.Replace(domain, ".", "_", -1)
+	domain = strings.Replace(domain, ":", "_", -1)
+	domain = strings.Replace(domain, "/", "_", -1)
 	return fmt.Sprintf("%s/%s/%s/%s", SchemaTrellis, name, version, domain)
 }
 
@@ -40,5 +46,6 @@ func WorkerTrellisDomainPath(name, version, domain string) string {
 func WorkerETCDDomainPath(name, version, domain string) string {
 	domain = strings.Replace(domain, ".", "_", -1)
 	domain = strings.Replace(domain, ":", "_", -1)
+	domain = strings.Replace(domain, "/", "_", -1)
 	return fmt.Sprintf("%s%s/%s/%s", SchemaETCDNaming, name, version, domain)
 }
