@@ -128,14 +128,14 @@ func (p *Register) stop(path string) {
 
 func (p *Register) regist(wor *worker) (err error) {
 	// minimum lease TTL is ttl-second
-	ctxGrant, cGrant := context.WithTimeout(context.TODO(), p.option.Heartbeat)
+	ctxGrant, cGrant := context.WithTimeout(context.TODO(), p.option.TTL)
 	defer cGrant()
 	resp, ie := p.client.Grant(ctxGrant, int64(p.option.TTL/time.Second))
 	if ie != nil {
 		return fmt.Errorf("grpclib: set service %q clientv3 failed: %s", wor.fullpath, ie.Error())
 	}
 
-	ctxGet, cGet := context.WithTimeout(context.Background(), p.option.Heartbeat)
+	ctxGet, cGet := context.WithTimeout(context.Background(), p.option.TTL)
 	defer cGet()
 	_, err = p.client.Get(ctxGet, wor.fullpath)
 	// should get first, if not exist, set it
@@ -146,7 +146,7 @@ func (p *Register) regist(wor *worker) (err error) {
 	}
 
 	// refresh set to true for not notifying the watcher
-	ctxPut, cPut := context.WithTimeout(context.TODO(), p.option.Heartbeat)
+	ctxPut, cPut := context.WithTimeout(context.TODO(), p.option.TTL)
 	defer cPut()
 	if _, err = p.client.Put(ctxPut, wor.fullpath, wor.service.String(), clientv3.WithLease(resp.ID)); err != nil {
 		return fmt.Errorf("grpclib: refresh service %q failed: %s", wor.fullpath, err.Error())

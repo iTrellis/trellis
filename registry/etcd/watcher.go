@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/go-trellis/trellis/configure"
 	"github.com/go-trellis/trellis/internal"
@@ -83,13 +85,13 @@ func (p *watcher) Next(ch chan *registry.Result) {
 					resp.Service = services
 				case clientv3.EventTypeDelete:
 					resp.Action = registry.ActionDelete
-					services, err := p.decode(ev.Kv.Value)
+					service, err := p.pathToService(ev.Kv.Key)
 					if err != nil {
 						resp.Err = err
 						ch <- resp
 						continue
 					}
-					resp.Service = services
+					resp.Service = service
 				default:
 
 				}
@@ -98,6 +100,19 @@ func (p *watcher) Next(ch chan *registry.Result) {
 			}
 		}
 	}
+}
+
+func (p *watcher) pathToService(bs []byte) (*configure.RegistService, error) {
+	paths := strings.Split(string(bs), "/")
+	if len(paths) < 6 {
+		return nil, fmt.Errorf("service path is invalid")
+	}
+	s := &configure.RegistService{
+		Name:    paths[3],
+		Version: paths[4],
+		Domain:  paths[5],
+	}
+	return s, nil
 }
 
 func (p *watcher) decode(bs []byte) (*configure.RegistService, error) {

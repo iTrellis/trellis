@@ -124,8 +124,6 @@ func runWatcher(w Watcher) {
 		}
 
 		defaultRegister.setNodeManager(path, nm)
-
-		nm.PrintNodes()
 	}
 }
 
