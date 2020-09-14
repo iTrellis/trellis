@@ -13,7 +13,7 @@ A micro service framework, which can build some services (component) into one se
 
 * Step 1: You can write your own services implement Service
 
-```
+```go
 // Service 服务对象
 type Service interface {
 	LifeCycle
@@ -44,7 +44,7 @@ service.RegistNewServiceFunc(name, version, newFunc)
 
 ### Project's build configure
 
-* [http post config](examples/cmd/build.yaml)
+* [http post config with origin building](examples/cmd/build.yaml)
 * [inner http api config](examples/cmd/build_remote.yaml)
 * [inner grpc api config](examples/cmd/build_grpc.yaml)
 
@@ -60,4 +60,3 @@ service.RegistNewServiceFunc(name, version, newFunc)
 * calling chain service.
 * config service: such as: build、 run configures.
 * monitor service: monitor logs, services' status, etc.
-* checking services' registry in configure

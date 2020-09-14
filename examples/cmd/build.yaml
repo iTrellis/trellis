@@ -5,9 +5,9 @@ project:
         cgo: false
         version: "1.13"
     build:
-        type: trellis
+        type: origin
         path: .
-        delete_build_file: true
+        delete_build_file: false
         flags: -mod vendor -a -tags netgo
         static: false
         ext_ldflags: []
