@@ -26,7 +26,7 @@ project:
             type: etcd
             options:
                 endpoint: 127.0.0.1:2379
-                heartbeat: 15s
-                ttl: 10s
+                heartbeat: 10s
+                ttl: 15s
                 timeout: 10s
                 retry_times: 1

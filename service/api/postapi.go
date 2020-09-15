@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/go-trellis/trellis/clients"
@@ -32,7 +33,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-trellis/common/errors"
+	"github.com/go-trellis/common/formats"
 	"github.com/go-trellis/config"
+	"github.com/go-trellis/txorm"
+	"github.com/go-xorm/xorm"
 )
 
 func init() {
@@ -48,14 +52,13 @@ type PostAPI struct {
 
 	forwardHeaders []string
 
-	apis map[string]*api
+	apis map[string]*API
 
 	srv *http.Server
-}
 
-type api struct {
-	proto.Service
-	Topic string
+	ticker    *time.Ticker
+	syncer    sync.RWMutex
+	apiEngine *xorm.Engine
 }
 
 // Response response
@@ -73,7 +76,7 @@ type Response struct {
 func NewPostAPI(opts ...service.OptionFunc) (service.Service, error) {
 
 	s := &PostAPI{
-		apis: make(map[string]*api),
+		apis: make(map[string]*API),
 	}
 
 	for _, o := range opts {
@@ -108,13 +111,31 @@ func (p *PostAPI) init() (err error) {
 				return fmt.Errorf("init api failed: %s", apiKey)
 			}
 
-			api := &api{Topic: apiConf.GetString("topic")}
-			api.Name = apiConf.GetString("service_name")
-			api.Version = apiConf.GetString("service_version")
+			api := &API{
+				Name:           apiConf.GetString("api"),
+				Topic:          apiConf.GetString("topic"),
+				ServiceName:    apiConf.GetString("service_name"),
+				ServiceVersion: apiConf.GetString("service_version"),
+			}
 
-			p.apis[apiConf.GetString("api")] = api
+			p.apis[api.Name] = api
 		}
 	case "mysql":
+
+		databaseConf := apisConf.GetValuesConfig(typ)
+
+		engines, err := txorm.NewEnginesFromConfig(databaseConf, "database")
+		if err != nil {
+			return err
+		}
+		p.apiEngine = engines[txorm.DefaultDatabase]
+
+		ticker := formats.ParseStringTime(apisConf.GetString("ticker", "30s"))
+
+		p.ticker = time.NewTicker(ticker)
+
+		go p.syncAPIs()
+
 	default:
 		return fmt.Errorf("unknown apis' config type")
 	}
@@ -206,7 +227,7 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 		TraceIP: msg.GetTraceIp(),
 	}
 	p.opts.Logger.Info("request", "trace_id", r.TraceID, "api_name", apiName, "client_ip", clientIP)
-	api, ok := p.apis[apiName]
+	api, ok := p.getAPI(apiName)
 	if !ok {
 		apiErr := errcode.ErrAPINotFound.New()
 		r.Code = apiErr.Code()
@@ -230,7 +251,7 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 	}
 	msg.SetBody(body)
 
-	msg.Service = &proto.Service{Name: api.GetName(), Version: api.GetVersion()}
+	msg.Service = &proto.Service{Name: api.ServiceName, Version: api.ServiceVersion}
 	msg.Topic = api.Topic
 
 	msg.SetHeader("Client-IP", clientIP)
@@ -266,6 +287,13 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 	p.opts.Logger.Error("call_server_failed", "trace_id", r.TraceID,
 		"api_name", apiName, "client_ip", clientIP, "err", r)
 	ctx.JSON(200, r)
+}
+
+func (p *PostAPI) getAPI(name string) (*API, bool) {
+	p.syncer.RLock()
+	api, ok := p.apis[name]
+	p.syncer.RUnlock()
+	return api, ok
 }
 
 // Route 路由

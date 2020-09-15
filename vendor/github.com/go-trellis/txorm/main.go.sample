@@ -1,0 +1,44 @@
+// GNU GPL v3 License
+// Copyright (c) 2019 github.com:go-trellis
+
+// package main
+
+// import (
+// 	"fmt"
+
+// 	"github.com/go-trellis/txorm"
+// 	"github.com/go-xorm/xorm"
+// )
+
+// var (
+// 	engines map[string]*xorm.Engine
+// )
+
+// type Sample struct {
+// 	Id   string `xorm:"id"`
+// 	Name string `xorm:"Name"`
+// }
+
+// func (*Sample) TableName() string {
+// 	return "sample"
+// }
+
+// func main() {
+// 	var err error
+// 	engines, err = txorm.NewEnginesFromFile("mysql.yaml")
+// 	if err != nil {
+// 		panic(err)
+// 	}
+
+// 	engine := engines[txorm.DefaultDatabase]
+// 	if engine == nil {
+// 		panic(txorm.ErrNotFoundXormEngine)
+// 	}
+
+// 	var ss []Sample
+// 	err = engine.NewSession().Find(&ss)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	fmt.Println(ss)
+// }

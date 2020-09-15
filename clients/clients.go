@@ -29,11 +29,11 @@ func CallService(msg *message.Message, keys ...string) (resp interface{}, err er
 	path := internal.WorkerTrellisPath(msg.GetService().GetName(), msg.GetService().GetVersion())
 	nm, ok := registry.GetNodeManager(path)
 	if !ok {
-		return nil, fmt.Errorf("not found service")
+		return nil, fmt.Errorf("not found service's node manager")
 	}
 	node, ok := nm.NodeFor(keys...)
 	if !ok {
-		return nil, fmt.Errorf("not found service")
+		return nil, fmt.Errorf("not found service's node")
 	}
 
 	protocol, err := node.Metadata.Int("protocol")

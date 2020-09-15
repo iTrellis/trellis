@@ -14,6 +14,8 @@ require (
 	github.com/go-trellis/common v1.8.2
 	github.com/go-trellis/config v1.4.6
 	github.com/go-trellis/node v1.2.2
+	github.com/go-trellis/txorm v1.2.0
+	github.com/go-xorm/xorm v0.7.9
 	github.com/golang/protobuf v1.4.2
 	github.com/google/uuid v1.1.1
 	github.com/spf13/cobra v1.0.0

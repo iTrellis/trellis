@@ -17,30 +17,46 @@ project:
                         allow-headers: ["X-Requested-With", "X-Cookie", "sso_service_ticket", "Authorization", "Content-Type", "Content-Length", "Origin", "X-ERP", "X-API", "Accept"]
                         expose-headers: ["Content-Length", "Content-Type", "Authorization", "X-Cookie", "sso_service_ticket", "X-ERP", "X-API"]
                 apis:
-                    type: file # mysql
+                    type: mysql # mysql
                     mysql:
-                        ###
-                    file:
-                        trellis_test:
-                            api: trellis.test
-                            service_name: serviceA
-                            service_version: v1
-                            topic: test1
-                        test_remote:
-                            api: trellis.test_remote
-                            service_name: serviceA
-                            service_version: v1
-                            topic: test_remote
-                        trellis_grpc:
-                            api: trellis.test_grpc
-                            service_name: serviceA
-                            service_version: v1
-                            topic: test_grpc
-                        trellis_testb:
-                            api: trellis.testb
-                            service_name: serviceB
-                            service_version: v1
-                            topic: test
+                        ticker: 30s
+                        database:
+                            test:
+                                host:      127.0.0.1
+                                port:      3306
+                                user:      worker
+                                password:  "18713250h"
+                                charset:   utf8
+                                location:  "Asia/Shanghai"
+                                parseTime: "True"
+                                allow_native_passwords: "true"
+                                max_idle_conns: 10
+                                max_open_conns: 100
+                                log_level: 1
+                                show_sql: false
+                                is_default: true
+                                timeout: 5s
+                    # file:
+                    #     trellis_test:
+                    #         api: trellis.test
+                    #         service_name: serviceA
+                    #         service_version: v1
+                    #         topic: test1
+                    #     test_remote:
+                    #         api: trellis.test_remote
+                    #         service_name: serviceA
+                    #         service_version: v1
+                    #         topic: test_remote
+                    #     trellis_grpc:
+                    #         api: trellis.test_grpc
+                    #         service_name: serviceA
+                    #         service_version: v1
+                    #         topic: test_grpc
+                    #     trellis_testb:
+                    #         api: trellis.testb
+                    #         service_name: serviceB
+                    #         service_version: v1
+                    #         topic: test
         serviceA:
             version: v1
             options:

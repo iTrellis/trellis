@@ -43,6 +43,8 @@ github.com/go-playground/universal-translator
 github.com/go-playground/validator/v10
 # github.com/go-resty/resty/v2 v2.3.0
 github.com/go-resty/resty/v2
+# github.com/go-sql-driver/mysql v1.5.0
+github.com/go-sql-driver/mysql
 # github.com/go-trellis/cache v1.1.1
 github.com/go-trellis/cache
 # github.com/go-trellis/common v1.8.2
@@ -58,6 +60,10 @@ github.com/go-trellis/common/logger
 github.com/go-trellis/config
 # github.com/go-trellis/node v1.2.2
 github.com/go-trellis/node
+# github.com/go-trellis/txorm v1.2.0
+github.com/go-trellis/txorm
+# github.com/go-xorm/xorm v0.7.9
+github.com/go-xorm/xorm
 # github.com/gogo/protobuf v1.2.1
 github.com/gogo/protobuf/gogoproto
 github.com/gogo/protobuf/proto
@@ -202,3 +208,7 @@ google.golang.org/protobuf/types/known/durationpb
 google.golang.org/protobuf/types/known/timestamppb
 # gopkg.in/yaml.v2 v2.3.0
 gopkg.in/yaml.v2
+# xorm.io/builder v0.3.6
+xorm.io/builder
+# xorm.io/core v0.7.3
+xorm.io/core
