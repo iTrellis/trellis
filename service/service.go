@@ -1,13 +1,25 @@
+/*
+Copyright © 2020 Henry Huang <hhh@rutcode.com>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+
 package service
 
 import (
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
-	"github.com/go-trellis/trellis/configure"
 	"github.com/go-trellis/trellis/internal"
 	"github.com/go-trellis/trellis/message"
 
@@ -97,37 +109,4 @@ func New(name, version string, opts ...OptionFunc) (Service, error) {
 		return nil, fmt.Errorf("server '%s' not exist", serviceKey)
 	}
 	return fn(opts...)
-}
-
-// BlockStop 阻断式停止
-func BlockStop() error {
-
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, syscall.SIGTERM, syscall.SIGINT, syscall.SIGKILL)
-
-	select {
-	case <-ch:
-	}
-	return runner.Stop()
-}
-
-// Stop 停止服务
-func Stop() error {
-	defer time.Sleep(time.Second)
-	return runner.Stop()
-}
-
-// Run 运行
-func Run(cfg *configure.Project, l logger.Logger) (err error) {
-	runner, err = NewRunner(cfg, l)
-	if err != nil {
-		return
-	}
-
-	err = runner.Run()
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

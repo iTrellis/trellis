@@ -1,3 +1,20 @@
+/*
+Copyright © 2020 Henry Huang <hhh@rutcode.com>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+
 package registry
 
 import (
@@ -17,6 +34,7 @@ var defaultRegister = &Register{
 	nodeManagers:     make(map[string]node.Manager),
 }
 
+// Register 注册机
 type Register struct {
 	locker sync.RWMutex
 
@@ -54,6 +72,7 @@ func RegistService(name string, service *configure.RegistService) error {
 	return r.Regist(service)
 }
 
+// NewRegistry 生成注册机
 func NewRegistry(name string, opts *RegistOption) error {
 	_, ok := defaultRegister.mapRegistries[name]
 	if ok {
@@ -73,6 +92,7 @@ func NewRegistry(name string, opts *RegistOption) error {
 	return nil
 }
 
+// NewRegistryWatcher 生成监控者
 func NewRegistryWatcher(name string, wConfig *configure.Watcher) error {
 	r, ok := defaultRegister.mapRegistries[name]
 	if !ok {
@@ -127,10 +147,12 @@ func runWatcher(w Watcher) {
 	}
 }
 
+// SetNodeManager 设置节点
 func SetNodeManager(key string, nm node.Manager) {
 	defaultRegister.setNodeManager(key, nm)
 }
 
+// GetNodeManager 获取节点
 func GetNodeManager(key string) (node.Manager, bool) {
 	return defaultRegister.getNodeManager(key)
 }
