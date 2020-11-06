@@ -44,7 +44,7 @@ project:
                             host:      127.0.0.1
                             port:      3306
                             user:      worker
-                            password:  "18713250h"
+                            password:  "123456"
                             charset:   utf8
                             location:  "Asia/Shanghai"
                             parseTime: "True"
