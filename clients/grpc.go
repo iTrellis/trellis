@@ -29,29 +29,57 @@ import (
 // TODO
 // 1. pool
 // 2. dial options
+const (
+	DefaultPoolMaxStreams = 20
+	DefaultPoolMaxIdle    = 50
+)
 
-type GRPCCaller struct{}
+type GRPCCaller struct {
+	opts Options
 
+	pool *pool
+}
+
+// TODO remove
 func init() {
 	RegistCaller(proto.Protocol_GRPC, NewGRPCCaller())
 }
 
-func NewGRPCCaller() Caller {
-	return &GRPCCaller{}
+func NewGRPCCaller(opts ...OptionFunc) Caller {
+	c := &GRPCCaller{}
+	for _, o := range opts {
+		o(&c.opts)
+	}
+
+	conf := c.opts.Options.ToConfig()
+
+	maxIdle := conf.GetInt("pool_max_idle", DefaultPoolMaxIdle)
+	maxStreams := conf.GetInt("pool_max_streams", DefaultPoolMaxStreams)
+
+	c.pool = newPool(c.opts.PoolSize, c.opts.PoolTTL, maxIdle, maxStreams)
+
+	return c
 }
 
-func (p *GRPCCaller) CallService(node *node.Node, msg *message.Message) (interface{}, error) {
+func (p *GRPCCaller) CallService(ctx context.Context, node *node.Node, msg *message.Message) (interface{}, error) {
 
 	conn, err := grpc.Dial(node.Value, grpc.WithInsecure())
+	// poolConn, err := p.pool.getConn(node.Value)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
+	// var grr error
+	// defer p.pool.release(node.Value, poolConn, grr)
+
+	// client := proto.NewRPCServiceClient(poolConn.ClientConn)
+
 	client := proto.NewRPCServiceClient(conn)
 
-	cb, err := client.Call(context.Background(), msg.Payload)
+	cbResp, err := client.Call(ctx, msg.Payload)
+
 	if err != nil {
 		return nil, err
 	}
-	return cb.GetBody(), nil
+	return cbResp.GetBody(), nil
 }

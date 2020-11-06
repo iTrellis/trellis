@@ -60,7 +60,7 @@ func NewService(opts ...service.OptionFunc) (service.Service, error) {
 }
 
 func (p *Service) init() (err error) {
-	p.Address = p.opts.Config.Get("addr")
+	p.Address = p.opts.Config.GetString("addr")
 	return
 }
 
@@ -96,7 +96,7 @@ func (p *Service) Route(string) service.HandlerFunc {
 }
 
 // Call 路由
-func (p *Service) Call(_ context.Context, payload *proto.Payload) (*proto.Callback, error) {
+func (p *Service) Call(ctx context.Context, payload *proto.Payload) (*proto.Response, error) {
 	// async中处理callback
 	msg := &message.Message{}
 	msg.Payload = payload
@@ -105,7 +105,7 @@ func (p *Service) Call(_ context.Context, payload *proto.Payload) (*proto.Callba
 	if err != nil {
 		return nil, err
 	}
-	cb := &proto.Callback{}
+	cb := &proto.Response{}
 	cb.Body, err = codec.Marshal(msg.GetHeader("Content-Type"), resp)
 	if err != nil {
 		return nil, err

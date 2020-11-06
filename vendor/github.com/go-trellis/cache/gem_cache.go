@@ -1,6 +1,19 @@
-// GNU GPL v3 License
+/*
+Copyright © 2016 Henry Huang <hhh@rutcode.com>
 
-// Copyright (c) 2016 github.com:go-trellis
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
 
 package cache
 
@@ -43,7 +56,7 @@ func (p *gemCache) GetTableCache(tab string) (TableCache, bool) {
 	return t, ok
 }
 
-func (p *gemCache) New(tab string, options ...Option) (err error) {
+func (p *gemCache) New(tab string, options ...OptionFunc) (err error) {
 	p.Lock()
 	defer p.Unlock()
 
@@ -73,16 +86,15 @@ func (p *gemCache) Delete(tab string) bool {
 	return true
 }
 
-func (p *gemCache) DeleteAllObjects(tab string) bool {
-
+func (p *gemCache) DeleteObjects(tab string) {
 	tabCache := p.getTable(tab)
 	if tabCache == nil {
-		return true
+		return
 	}
-	return tabCache.DeleteObjects()
+	tabCache.DeleteObjects()
 }
 
-func (p *gemCache) DeleteObject(tab, key string) bool {
+func (p *gemCache) DeleteObject(tab string, key interface{}) bool {
 	tabCache := p.getTable(tab)
 	if tabCache == nil {
 		return true
@@ -90,23 +102,19 @@ func (p *gemCache) DeleteObject(tab, key string) bool {
 	return tabCache.DeleteObject(key)
 }
 
-func (p *gemCache) Insert(tab, key string, value interface{}) bool {
-
+func (p *gemCache) Insert(tab string, key, value interface{}) bool {
 	tabCache := p.getTable(tab)
 	if tabCache == nil {
 		return false
 	}
-
 	return tabCache.Insert(key, value)
 }
 
-func (p *gemCache) InsertExpire(tab, key string, value interface{}, expire time.Duration) bool {
-
+func (p *gemCache) InsertExpire(tab string, key, value interface{}, expire time.Duration) bool {
 	tabCache := p.getTable(tab)
 	if tabCache == nil {
 		return false
 	}
-
 	return tabCache.InsertExpire(key, value, expire)
 }
 
@@ -114,7 +122,7 @@ func (p *gemCache) getTable(tab string) TableCache {
 	return p.tables[tab]
 }
 
-func (p *gemCache) Lookup(tab, key string) ([]interface{}, bool) {
+func (p *gemCache) Lookup(tab string, key interface{}) ([]interface{}, bool) {
 	tabCache := p.getTable(tab)
 	if tabCache == nil {
 		return nil, false
@@ -122,46 +130,34 @@ func (p *gemCache) Lookup(tab, key string) ([]interface{}, bool) {
 	return tabCache.Lookup(key)
 }
 
-func (p *gemCache) Member(tab, key string) bool {
+func (p *gemCache) Member(tab string, key interface{}) bool {
 	tabCache := p.getTable(tab)
 	if tabCache == nil {
 		return false
 	}
-
 	return tabCache.Member(key)
 }
 
-func (p *gemCache) Members(tab string) ([]string, bool) {
+func (p *gemCache) Members(tab string) ([]interface{}, bool) {
 	tabCache := p.getTable(tab)
 	if tabCache == nil {
 		return nil, false
 	}
-
 	return tabCache.Members()
 }
 
-func (p *gemCache) SetExpire(tab, key string, expire time.Duration) bool {
+func (p *gemCache) SetExpire(tab string, key interface{}, expire time.Duration) bool {
 	tabCache := p.getTable(tab)
 	if tabCache == nil {
 		return false
 	}
-
 	return tabCache.SetExpire(key, expire)
 }
 
-func (p *gemCache) LookupAll(tab string) (map[string][]interface{}, bool) {
+func (p *gemCache) LookupAll(tab string) (map[interface{}][]interface{}, bool) {
 	tabCache := p.getTable(tab)
 	if tabCache == nil {
 		return nil, false
 	}
-
 	return tabCache.LookupAll()
-}
-
-func (p *gemCache) LookupLimit(tab string, pos, limit uint) (map[string][]interface{}, bool) {
-	tabCache := p.getTable(tab)
-	if tabCache == nil {
-		return nil, false
-	}
-	return tabCache.LookupLimit(pos, limit)
 }

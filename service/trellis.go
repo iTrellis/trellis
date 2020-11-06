@@ -18,6 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package service
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -31,37 +32,48 @@ import (
 	"github.com/go-trellis/trellis/message"
 	"github.com/go-trellis/trellis/message/proto"
 	"github.com/go-trellis/trellis/registry"
+	"github.com/go-trellis/trellis/router"
 
 	"github.com/go-trellis/common/errors"
-	"github.com/go-trellis/common/formats"
 	"github.com/go-trellis/common/logger"
+	"github.com/go-trellis/config"
 	"github.com/go-trellis/node"
 
 	// 注册机
 	_ "github.com/go-trellis/trellis/registry/cache"
 	_ "github.com/go-trellis/trellis/registry/etcd"
+
+	// service version
+	_ "github.com/go-trellis/trellis/version"
 )
 
 // Trellis 启动对象
 type Trellis struct {
-	conf   *configure.Project
+	conf config.Config
+
+	proj *configure.Project
+
 	logger logger.Logger
 
 	services map[string]Service
 
-	opts RouterOptions
+	opts router.Options
 }
 
-// var trellis Router
-
 // NewTrellis 生成启动对象
-func NewTrellis(cfg *configure.Project, l logger.Logger) (Router, error) {
+func NewTrellis(cfg config.Config, l logger.Logger) (router.Router, error) {
 
 	t := &Trellis{
-		conf:     cfg,
-		services: make(map[string]Service),
+		conf: cfg,
+		proj: &configure.Project{},
 
 		logger: l,
+
+		services: make(map[string]Service),
+	}
+
+	if err := t.conf.ToObject("project", t.proj); err != nil {
+		return nil, err
 	}
 
 	if err := t.initRegistries(); err != nil {
@@ -69,11 +81,10 @@ func NewTrellis(cfg *configure.Project, l logger.Logger) (Router, error) {
 		return nil, err
 	}
 
-	if err := t.newServices(); err != nil {
-		t.logger.Error("new_services_failed", err)
+	if err := t.initServices(); err != nil {
+		t.logger.Error("init_services_failed", err)
 		return nil, err
 	}
-	t.logger.Info("new services ok")
 
 	if err := t.registServices(); err != nil {
 		t.logger.Error("regist_services_failed", err)
@@ -96,7 +107,7 @@ func BlockStop() {
 }
 
 // Run 运行
-func Run(cfg *configure.Project, l logger.Logger) (Router, error) {
+func Run(cfg config.Config, l logger.Logger) (router.Router, error) {
 	trellis, err := NewTrellis(cfg, l)
 	if err != nil {
 		return nil, err
@@ -110,14 +121,14 @@ func Run(cfg *configure.Project, l logger.Logger) (Router, error) {
 	return trellis, nil
 }
 
-func (p *Trellis) newServices() error {
+func (p *Trellis) initServices() error {
 
-	for name, service := range p.conf.Services {
+	for name, service := range p.proj.Services {
 		service.Name = name
 
 		p.logger.Debug("new service", service.String())
 
-		err := p.NewService(RouterOptionService(service), RouterOptionLogger(p.logger))
+		err := p.NewService(router.OptionService(service), router.OptionLogger(p.logger))
 		if err != nil {
 			return err
 		}
@@ -140,7 +151,7 @@ func (p *Trellis) newServices() error {
 }
 
 // NewService new service
-func (p *Trellis) NewService(opts ...RouterOptionFunc) (err error) {
+func (p *Trellis) NewService(opts ...router.OptionFunc) (err error) {
 
 	for _, o := range opts {
 		o(&p.opts)
@@ -154,7 +165,7 @@ func (p *Trellis) NewService(opts ...RouterOptionFunc) (err error) {
 	}
 
 	s, err := New(p.opts.Service.GetName(), p.opts.Service.GetVersion(),
-		Config(p.opts.Service.Options),
+		Config(p.opts.Service.Options.ToConfig()),
 		Logger(p.opts.Logger.With(url)),
 	)
 	if err != nil {
@@ -169,7 +180,8 @@ func (p *Trellis) NewService(opts ...RouterOptionFunc) (err error) {
 
 func (p *Trellis) registServices() error {
 	p.logger.Info("regist service start")
-	for name, service := range p.conf.Services {
+
+	for name, service := range p.proj.Services {
 		service.Name = name
 
 		if service.Registry == nil {
@@ -231,14 +243,15 @@ func (p *Trellis) Stop() error {
 // initRegistries 启动注册器
 func (p *Trellis) initRegistries() (err error) {
 
-	for name, reg := range p.conf.Registries {
-		retryTimes, _ := reg.Options.Int("retry_times")
+	for name, reg := range p.proj.Registries {
+
+		opts := reg.Options.ToConfig()
 		rOpts := &registry.RegistOption{
 			RegisterType: proto.RegisterType(proto.RegisterType_value[strings.ToUpper(reg.Type)]),
-			Endpoint:     reg.Options.Get("endpoint"),
-			TTL:          formats.ParseStringTime(reg.Options.Get("ttl")),
-			Heartbeat:    formats.ParseStringTime(reg.Options.Get("heartbeat")),
-			RetryTimes:   uint32(retryTimes),
+			Endpoint:     opts.GetString("endpoint"),
+			TTL:          opts.GetTimeDuration("ttl"),
+			Heartbeat:    opts.GetTimeDuration("heartbeat"),
+			RetryTimes:   uint32(opts.GetInt("retry_times")),
 			Logger:       p.logger,
 		}
 		p.logger.Debug("new registry", rOpts)
@@ -249,15 +262,15 @@ func (p *Trellis) initRegistries() (err error) {
 		}
 
 		for _, wConfig := range reg.Watchers {
-
 			if err = registry.NewRegistryWatcher(name, wConfig); err != nil {
 				p.logger.Error("new watcher failed", *wConfig, err)
 				return err
 			}
+
+			p.logger.Info("new watcher", name, *wConfig)
 		}
 
 		p.logger.Info("initial registry ok", name, reg)
-
 	}
 	return nil
 }
@@ -290,7 +303,7 @@ func (p *Trellis) GetService(name, version string) (Service, error) {
 }
 
 // CallService call service
-func (p *Trellis) CallService(_ *node.Node, msg *message.Message) (interface{}, error) {
+func (p *Trellis) CallService(_ context.Context, _ *node.Node, msg *message.Message) (interface{}, error) {
 	s, err := p.GetService(msg.GetService().GetName(), msg.GetService().GetVersion())
 	if err != nil {
 		return nil, err

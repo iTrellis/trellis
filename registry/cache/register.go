@@ -43,7 +43,7 @@ func New() registry.Registry {
 }
 
 func init() {
-	registry.Regist(proto.RegisterType_Cache, New)
+	registry.Regist(proto.RegisterType_CACHE, New)
 }
 
 // Init initial register

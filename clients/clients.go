@@ -18,7 +18,9 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package clients
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	"github.com/go-trellis/node"
 
@@ -28,9 +30,13 @@ import (
 	"github.com/go-trellis/trellis/registry"
 )
 
+const (
+	DefaultTimeout = 10 * time.Second
+)
+
 // Caller 客户端请求对象
 type Caller interface {
-	CallService(nd *node.Node, msg *message.Message) (resp interface{}, err error)
+	CallService(ctx context.Context, nd *node.Node, msg *message.Message) (resp interface{}, err error)
 }
 
 var mapCallers = map[proto.Protocol]Caller{}
@@ -46,21 +52,24 @@ func CallService(msg *message.Message, keys ...string) (resp interface{}, err er
 	path := internal.WorkerTrellisPath(msg.GetService().GetName(), msg.GetService().GetVersion())
 	nm, ok := registry.GetNodeManager(path)
 	if !ok {
-		return nil, fmt.Errorf("not found service's node manager")
+		return nil, fmt.Errorf("not found service's node manager: %+v", msg.GetService())
 	}
 	node, ok := nm.NodeFor(keys...)
 	if !ok {
 		return nil, fmt.Errorf("not found service's node")
 	}
 
-	protocol, err := node.Metadata.Int("protocol")
-	if err != nil {
-		return nil, err
-	}
+	mdConfig := node.Metadata.ToConfig()
+
+	protocol := mdConfig.GetInt("protocol")
+
 	c, ok := mapCallers[proto.Protocol(protocol)]
 	if !ok {
 		return nil, fmt.Errorf("unknown caller: %d", protocol)
 	}
 
-	return c.CallService(node, msg)
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancel()
+
+	return c.CallService(ctx, node, msg)
 }

@@ -3,6 +3,26 @@ project:
         level: 1
         chan_buffer: 10000
         separator: "\t"
+
+    registries:
+        etcd-test:
+            type: etcd
+            options:
+                endpoint: 127.0.0.1:2379
+                heartbeat: 10s
+                ttl: 15s
+                timeout: 10s
+                retry_times: 1 # 0 is unlimited
+            watchers:
+                -
+                    name: remote_http
+                    version: v1
+                    load_balancing: 1
+                -
+                    name: remote_grpc
+                    version: v1
+                    load_balancing: 1
+
     services:
         trellis-postapi:
             version: v1
@@ -20,22 +40,21 @@ project:
                     type: mysql # mysql
                     mysql:
                         ticker: 30s
-                        database:
-                            test:
-                                host:      127.0.0.1
-                                port:      3306
-                                user:      worker
-                                password:  "18713250h"
-                                charset:   utf8
-                                location:  "Asia/Shanghai"
-                                parseTime: "True"
-                                allow_native_passwords: "true"
-                                max_idle_conns: 10
-                                max_open_conns: 100
-                                log_level: 1
-                                show_sql: false
-                                is_default: true
-                                timeout: 5s
+                        test:
+                            host:      127.0.0.1
+                            port:      3306
+                            user:      worker
+                            password:  "123456"
+                            charset:   utf8
+                            location:  "Asia/Shanghai"
+                            parseTime: "True"
+                            allow_native_passwords: "true"
+                            max_idle_conns: 10
+                            max_open_conns: 100
+                            log_level: 1
+                            show_sql: false
+                            is_default: true
+                            timeout: 5s
                     # file:
                     #     trellis_test:
                     #         api: trellis.test
@@ -64,22 +83,3 @@ project:
                 key2: b
         serviceB:
             version: v1
-    registries:
-        etcd-test:
-            type: etcd
-            options:
-                endpoint: 127.0.0.1:2379
-                heartbeat: 10s
-                ttl: 15s
-                timeout: 10s
-                retry_times: 1 # 0 is unlimited
-            watchers:
-                -
-                    name: remote_http 
-                    version: v1
-                    load_balancing: 1
-                -
-                    name: remote_grpc 
-                    version: v1
-                    load_balancing: 1
-

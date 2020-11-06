@@ -18,6 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package clients
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -41,12 +42,13 @@ func NewHTTPCaller() Caller {
 	return &HTTPCaller{}
 }
 
-func (p *HTTPCaller) CallService(node *node.Node, msg *message.Message) (interface{}, error) {
+func (p *HTTPCaller) CallService(ctx context.Context, node *node.Node, msg *message.Message) (interface{}, error) {
 
 	client := resty.New()
 
 	resp, err := client.R().
 		SetBody(msg.Payload).
+		SetContext(ctx).
 		SetHeader("Content-Type", msg.GetHeader("Content-Type")).
 		Post(node.Value)
 	if err != nil {

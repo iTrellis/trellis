@@ -6,7 +6,7 @@ package txorm
 import (
 	"reflect"
 
-	"github.com/go-xorm/xorm"
+	"xorm.io/xorm"
 )
 
 // TXorm trellis xorm

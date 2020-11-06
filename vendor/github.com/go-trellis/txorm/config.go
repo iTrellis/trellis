@@ -8,8 +8,8 @@ import (
 	"sync"
 
 	"github.com/go-trellis/config"
-	"github.com/go-xorm/xorm"
-	"xorm.io/core"
+	"xorm.io/xorm"
+	"xorm.io/xorm/log"
 )
 
 var locker = &sync.Mutex{}
@@ -20,42 +20,49 @@ func NewEnginesFromFile(file string) (map[string]*xorm.Engine, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewEnginesFromConfig(conf, "mysql")
+	return NewEnginesFromConfig(conf)
 }
 
 // NewEnginesFromConfig initial xorm engine from config
-func NewEnginesFromConfig(conf config.Config, name string) (map[string]*xorm.Engine, error) {
+func NewEnginesFromConfig(conf config.Config) (engines map[string]*xorm.Engine, err error) {
 
-	engines := make(map[string]*xorm.Engine)
+	es := make(map[string]*xorm.Engine)
+	if conf == nil {
+		return nil, fmt.Errorf("config is nil")
+	}
 
 	locker.Lock()
 	defer locker.Unlock()
 
-	cfg := conf.GetValuesConfig(name)
-	if cfg == nil {
-		return nil, fmt.Errorf("config is nil")
-	}
+	for _, databaseName := range conf.GetKeys() {
+		var _engine *xorm.Engine
+		databaseConf := conf.GetValuesConfig(databaseName)
+		switch driver := databaseConf.GetString("driver", "mysql"); driver {
+		case driver:
 
-	for _, databaseName := range cfg.GetKeys() {
-		_engine, err := xorm.NewEngine("mysql", GetMysqlDSNFromConfig(databaseName, cfg.GetValuesConfig(databaseName)))
-		if err != nil {
-			return nil, err
+			_engine, err = xorm.NewEngine(driver, GetMysqlDSNFromConfig(databaseName, databaseConf))
+			if err != nil {
+				return nil, err
+			}
+
+			_engine.SetMaxIdleConns(conf.GetInt(databaseName+".max_idle_conns", 10))
+
+			_engine.SetMaxOpenConns(conf.GetInt(databaseName+".max_open_conns", 100))
+
+			_engine.ShowSQL(conf.GetBoolean(databaseName + ".show_sql"))
+
+		default:
+			return nil, fmt.Errorf("unsupported driver: %s", driver)
 		}
 
-		_engine.SetMaxIdleConns(cfg.GetInt(databaseName+".max_idle_conns", 10))
+		_engine.Logger().SetLevel(log.LogLevel(conf.GetInt(databaseName+".log_level", 0)))
 
-		_engine.SetMaxOpenConns(cfg.GetInt(databaseName+".max_open_conns", 100))
-
-		_engine.ShowSQL(cfg.GetBoolean(databaseName + ".show_sql"))
-
-		_engine.Logger().SetLevel(core.LogLevel(cfg.GetInt(databaseName+".log_level", 0)))
-
-		if _isD := cfg.GetBoolean(databaseName + ".is_default"); _isD {
-			engines[DefaultDatabase] = _engine
+		if _isD := conf.GetBoolean(databaseName + ".is_default"); _isD {
+			es[DefaultDatabase] = _engine
 		}
 
-		engines[databaseName] = _engine
+		es[databaseName] = _engine
 	}
 
-	return engines, nil
+	return es, nil
 }

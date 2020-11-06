@@ -2,22 +2,24 @@
 light cache in go 
 
 * [![GoDoc](http://godoc.org/github.com/go-trellis/cache?status.svg)](http://godoc.org/github.com/go-trellis/cache)
-* [![Build Status](https://travis-ci.org/go-trellis/cache.png)](https://travis-ci.org/go-trellis/cache)
 
 ## Introduction
 
 ### Installation
 
 ```shell
-go get "github.com/go-trellis/formats/inner-types"
 go get "github.com/go-trellis/cache"
 ```
 
-### Example
-
-[See test file](table_cache_test.go)
-
 ### Features
+
+* Simple lru
+* It can set Unique | Bag | DuplicateBag values per key
+
+### TODO
+
+* main node: to manage cache
+* consistent hash to several nodes to install keys
 
 #### Cache
 
@@ -31,30 +33,27 @@ type Cache interface {
 	// Get TableCache
 	GetTableCache(tab string) (TableCache, bool)
 	// Creates a new table.
-	New(tab string, options TableOptions) error
+	New(tab string, options ...OptionFunc) error
 	// Inserts the object or all of the objects in list.
-	Insert(tab, key string, value interface{}) bool
+	Insert(tab string, key, value interface{}) bool
 	// Inserts the object or all of the objects with expired time in list.
-	InsertExpire(tab, key string, value interface{}, expire time.Duration) bool
+	InsertExpire(tab string, key, value interface{}, expire time.Duration) bool
 	// Deletes the entire table Tab.
 	Delete(tab string) bool
 	// Deletes all objects with key, Key from table Tab.
-	DeleteObject(tab, key string) bool
+	DeleteObject(tab string, key interface{}) bool
 	// Delete all objects in the table Tab. Remain table in cache.
-	DeleteAllObjects(tab string) bool
+	DeleteObjects(tab string)
 	// Look up values with key, Key from table Tab.
-	Lookup(tab, key string) ([]interface{}, bool)
+	Lookup(tab string, key interface{}) ([]interface{}, bool)
 	// Look up all values in the Tab.
-	LookupAll(tab string) (map[string][]interface{}, bool)
-	// Look up pos to limit, table order set must be true
-	// if limit equals 0, to table's end
-	LookupLimit(tab string, pos, limit uint) (map[string][]interface{}, bool)
+	LookupAll(tab string) (map[interface{}][]interface{}, bool)
 	// Returns true if one or more elements in the table has key Key, otherwise false.
-	Member(tab, key string) bool
+	Member(tab string, key interface{}) bool
 	// Retruns all keys in the table Tab.
-	Members(tab string) ([]string, bool)
+	Members(tab string) ([]interface{}, bool)
 	// Set key Key expire time in the table Tab.
-	SetExpire(tab, key string, expire time.Duration) bool
+	SetExpire(tab string, key interface{}, expire time.Duration) bool
 }
 ```
 
@@ -66,64 +65,26 @@ table cache is manager for k-vs
 // TableCache
 type TableCache interface {
 	// Inserts the object or all of the objects in list.
-	Insert(key string, values interface{}) bool
+	Insert(key, values interface{}) bool
 	// Inserts the object or all of the objects with expired time in list.
-	InsertExpire(key string, value interface{}, expire time.Duration) bool
+	InsertExpire(key, value interface{}, expire time.Duration) bool
 	// Deletes all objects with key: Key.
-	DeleteObject(key string) bool
+	DeleteObject(key interface{}) bool
 	// Delete all objects in the table Tab. Remain table in cache.
-	DeleteObjects() bool
+	DeleteObjects()
 	// Returns true if one or more elements in the table has key: Key, otherwise false.
-	Member(key string) bool
+	Member(key interface{}) bool
 	// Retruns all keys in the table Tab.
-	Members() ([]string, bool)
+	Members() ([]interface{}, bool)
 	// Look up values with key: Key.
-	Lookup(key string) ([]interface{}, bool)
+	Lookup(key interface{}) ([]interface{}, bool)
 	// Look up all values in the Tab.
-	LookupAll() (map[string][]interface{}, bool)
-	// Look up pos to limit, table order set must be true
-	// if limit equals 0, to table's end
-	LookupLimit(pos, limit uint) (map[string][]interface{}, bool)
+	LookupAll() (map[interface{}][]interface{}, bool)
 	// Set Key Expire time
-	SetExpire(key string, expire time.Duration) bool
-	// Set background expired time, default: 30s
-	SetBackgroundExpiredTime(time.Duration)
+	SetExpire(key interface{}, expire time.Duration) bool
 }
 ```
 
 #### Sample: NewTableCache with options
 
-```go
-// TableOptionSets
-const (
-	// OrederSet: true | false
-	TableOptionOrderedSet = "ordered_set"
-	// ValueMode
-	TableOptionValueMode = "value_mode"
-)
-
-// ValueMode
-const (
-	// only one value
-	ValueModeUnique ValueMode = iota
-	// The table is a bag table, which can have many objects
-	// but only one instance of each object, per key.
-	ValueModeBag
-	// The table is a duplicate_bag table, which can have many objects,
-	// including multiple copies of the same object, per key.
-	ValueModeDuplicateBag
-)
-
-	// ValueModeUnique table
-	Cache.New("tab1", nil)
-	// ValueModeDuplicateBag table
-	Cache.New(tab2, cache.TableOptions{cache.TableOptionValueMode: cache.ValueModeDuplicateBag})
-	// ValueModeBag table
-	Cache.New(tab3, cache.TableOptions{cache.TableOptionValueMode: cache.ValueModeBag})
-	// ValueModeUnique with keys order set (TableOptionOrderedSet) 
-	Cache.New(tab4, cache.TableOptions{cache.TableOptionOrderedSet: true})
-	// ValueModeBag with keys order set (TableOptionOrderedSet) 
-	Cache.New(tab4, cache.TableOptions{
-		cache.TableOptionValueMode: cache.ValueModeBag, 
-		cache.TableOptionOrderedSet: true})
-```
+[Examples](examples/main.go)
