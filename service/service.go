@@ -37,12 +37,12 @@ type OptionFunc func(*Options)
 
 // Options 参数对象
 type Options struct {
-	Config config.Options
+	Config config.Config
 	Logger logger.Logger
 }
 
 // Config 注入配置
-func Config(c config.Options) OptionFunc {
+func Config(c config.Config) OptionFunc {
 	return func(p *Options) {
 		p.Config = c
 	}

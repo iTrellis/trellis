@@ -38,8 +38,8 @@ func NewServiceA(opts ...service.OptionFunc) (service.Service, error) {
 		o(&s.opts)
 	}
 
-	s.opts.Logger.Info("serviceA_init", "key1", s.opts.Config.Get("key1"))
-	s.opts.Logger.Info("serviceA_init", "key2", s.opts.Config.Get("key2"))
+	s.opts.Logger.Info("serviceA_init", "key1", s.opts.Config.GetString("key1"))
+	s.opts.Logger.Info("serviceA_init", "key2", s.opts.Config.GetString("key2"))
 
 	return s, nil
 }

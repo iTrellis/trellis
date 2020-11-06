@@ -34,9 +34,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-trellis/common/errors"
 	"github.com/go-trellis/common/formats"
-	"github.com/go-trellis/config"
 	"github.com/go-trellis/txorm"
-	"github.com/go-xorm/xorm"
+	"xorm.io/xorm"
 )
 
 func init() {
@@ -47,8 +46,6 @@ func init() {
 type PostAPI struct {
 	mode string
 	opts service.Options
-
-	cfg config.Config
 
 	forwardHeaders []string
 
@@ -83,8 +80,6 @@ func NewPostAPI(opts ...service.OptionFunc) (service.Service, error) {
 		o(&s.opts)
 	}
 
-	s.cfg = config.DefaultGetter.GenMapConfig(s.opts.Config)
-
 	err := s.init()
 	if err != nil {
 		return nil, err
@@ -95,11 +90,11 @@ func NewPostAPI(opts ...service.OptionFunc) (service.Service, error) {
 
 func (p *PostAPI) init() (err error) {
 
-	p.mode = p.cfg.GetString("mode")
+	p.mode = p.opts.Config.GetString("mode")
 
 	gin.SetMode(p.mode)
 
-	apisConf := p.cfg.GetValuesConfig("apis")
+	apisConf := p.opts.Config.GetValuesConfig("apis")
 
 	typ := apisConf.GetString("type")
 	switch typ {
@@ -124,7 +119,7 @@ func (p *PostAPI) init() (err error) {
 
 		databaseConf := apisConf.GetValuesConfig(typ)
 
-		engines, err := txorm.NewEnginesFromConfig(databaseConf, "database")
+		engines, err := txorm.NewEnginesFromConfig(databaseConf)
 		if err != nil {
 			return err
 		}
@@ -140,7 +135,7 @@ func (p *PostAPI) init() (err error) {
 		return fmt.Errorf("unknown apis' config type")
 	}
 
-	httpConf := p.cfg.GetValuesConfig("http")
+	httpConf := p.opts.Config.GetValuesConfig("http")
 
 	urlPath := httpConf.GetString("path", "/")
 
@@ -183,7 +178,7 @@ func (p *PostAPI) Start() error {
 
 		var err error
 
-		sslConf := p.cfg.GetConfig("http.ssl")
+		sslConf := p.opts.Config.GetValuesConfig("http.ssl")
 
 		if sslConf != nil && sslConf.GetBoolean("enabled", false) {
 			err = p.srv.ListenAndServeTLS(
@@ -204,7 +199,7 @@ func (p *PostAPI) Start() error {
 // Stop stop service
 func (p *PostAPI) Stop() error {
 
-	dur := p.cfg.GetTimeDuration("http.shutdown-timeout", time.Second*30)
+	dur := p.opts.Config.GetTimeDuration("http.shutdown-timeout", time.Second*30)
 
 	ctx, cancel := context.WithTimeout(context.Background(), dur)
 	defer cancel()
@@ -215,10 +210,10 @@ func (p *PostAPI) Stop() error {
 	return nil
 }
 
-func (p *PostAPI) serve(ctx *gin.Context) {
+func (p *PostAPI) serve(gCtx *gin.Context) {
 
-	apiName := ctx.Request.Header.Get("X-API")
-	clientIP := internal.GetClientIP(ctx)
+	apiName := gCtx.Request.Header.Get("X-API")
+	clientIP := internal.GetClientIP(gCtx)
 
 	msg := message.NewMessage()
 
@@ -233,18 +228,18 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 		r.Code = apiErr.Code()
 		r.Msg = apiErr.Error()
 		r.Namespace = apiErr.Namespace()
-		ctx.JSON(http.StatusBadRequest, r)
+		gCtx.JSON(http.StatusBadRequest, r)
 		p.opts.Logger.Error("api_not_found", "trace_id", r.TraceID, "api_name", apiName, "client_ip", clientIP)
 		return
 	}
 
-	body, err := ctx.GetRawData()
+	body, err := gCtx.GetRawData()
 	if err != nil {
 		getErr := errcode.ErrBadRequest.New(errors.Params{"err": err.Error()})
 		r.Code = getErr.Code()
 		r.Msg = getErr.Error()
 		r.Namespace = getErr.Namespace()
-		ctx.JSON(http.StatusBadRequest, r)
+		gCtx.JSON(http.StatusBadRequest, r)
 		p.opts.Logger.Error("get_raw_data", "trace_id", r.TraceID,
 			"api_name", apiName, "client_ip", clientIP, "err", err)
 		return
@@ -256,13 +251,13 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 
 	msg.SetHeader("Client-IP", clientIP)
 	for _, h := range p.forwardHeaders {
-		msg.SetHeader(h, ctx.GetHeader(h))
+		msg.SetHeader(h, gCtx.GetHeader(h))
 	}
 
 	resp, err := clients.CallService(msg, fmt.Sprintf("%s-%s", msg.GetService().String(), clientIP))
 	if err == nil {
 		r.Result = resp
-		ctx.JSON(200, r)
+		gCtx.JSON(200, r)
 		return
 	}
 
@@ -286,7 +281,7 @@ func (p *PostAPI) serve(ctx *gin.Context) {
 
 	p.opts.Logger.Error("call_server_failed", "trace_id", r.TraceID,
 		"api_name", apiName, "client_ip", clientIP, "err", r)
-	ctx.JSON(200, r)
+	gCtx.JSON(200, r)
 }
 
 func (p *PostAPI) getAPI(name string) (*API, bool) {

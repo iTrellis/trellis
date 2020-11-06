@@ -33,49 +33,48 @@ import (
 
 // Config project configure
 type Config struct {
-	Project *Project `yaml:"project"`
+	Project *Project `yaml:"project" json:"project"`
 }
 
 // Project project config info
 type Project struct {
-	Logger LoggerConfig `yaml:"logger"`
+	Logger LoggerConfig `yaml:"logger" json:"logger"`
 
-	Services map[string]*Service `yaml:"services"`
+	Services map[string]*Service `yaml:"services" json:"services"`
 
-	Registries map[string]*Registry `yaml:"registries"`
+	Registries map[string]*Registry `yaml:"registries" json:"registries"`
 }
 
 // LoggerConfig logger's configure
 type LoggerConfig struct {
-	Level      logger.Level `yaml:"level"`
-	ChanBuffer int          `yaml:"chan_buffer"`
-	Separator  string       `yaml:"separator"`
+	Level      logger.Level `yaml:"level" json:"level"`
+	ChanBuffer int          `yaml:"chan_buffer" json:"chan_buffer"`
+	Separator  string       `yaml:"separator" json:"separator"`
 }
 
 // Service service info
 type Service struct {
 	proto.Service `yaml:",inline"`
 
-	// Protocol string         `yaml:"protocol"`
-	Options config.Options `yaml:"options"`
+	Options config.Options `yaml:"options" json:"options"`
 
-	Registry *ServiceRegistryOptions `yaml:"registry"`
+	Registry *ServiceRegistryOptions `yaml:"registry" json:"registry"`
 }
 
 type ServiceRegistryOptions struct {
-	Name     string `yaml:"name"`
-	Domain   string `yaml:"domain"`
-	Protocol string `yaml:"protocol"`
-	Weight   uint32 `yaml:"weight"`
+	Name     string `yaml:"name" json:"name"`
+	Domain   string `yaml:"domain" json:"domain"`
+	Protocol string `yaml:"protocol" json:"protocol"`
+	Weight   uint32 `yaml:"weight" json:"weight"`
 }
 
 // Registry run configure
 type Registry struct {
-	Type string `json:"type"`
+	Type string `yaml:"type" json:"type"`
 
-	Options config.Options `yaml:"options"`
+	Options config.Options `yaml:"options" json:"options"`
 
-	Watchers []*Watcher `yaml:"watchers"`
+	Watchers []*Watcher `yaml:"watchers" json:"watchers"`
 }
 
 // RegistService service which should regist into registry
@@ -106,7 +105,7 @@ type RegistServices []*RegistService
 type Watcher struct {
 	proto.Service `yaml:",inline"`
 
-	LoadBalancing node.Type `yaml:"load_balancing"`
+	LoadBalancing node.Type `yaml:"load_balancing" json:"load_balancing"`
 }
 
 // Fullpath fullname

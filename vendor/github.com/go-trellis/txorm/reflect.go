@@ -15,7 +15,8 @@ var mapErrorTypes = map[reflect.Type]bool{
 	// 普通错误类型
 	reflect.TypeOf((*error)(nil)).Elem(): true,
 	// common error错误类型
-	reflect.TypeOf((*errors.ErrorCode)(nil)).Elem(): true,
+	reflect.TypeOf((*errors.ErrorCode)(nil)).Elem():   true,
+	reflect.TypeOf((*errors.SimpleError)(nil)).Elem(): true,
 }
 
 // AddErrorTypes 增加支持的错误类型

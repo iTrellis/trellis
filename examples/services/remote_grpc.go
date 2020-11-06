@@ -52,7 +52,7 @@ func (p *RemoteGRPC) Route(topic string) service.HandlerFunc {
 			if err := msg.ToObject(req); err != nil {
 				return nil, err
 			}
-			fmt.Println(string(msg.GetReqBody()))
+			fmt.Println(string(msg.GetBody()))
 			return &RespRemote{Msg: fmt.Sprintf("grpc: %s", req.Name)}, nil
 		}
 	}

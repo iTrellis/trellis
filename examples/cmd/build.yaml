@@ -7,7 +7,7 @@ project:
     build:
         type: origin
         path: .
-        delete_build_file: false
+        delete_build_file: true
         flags: -mod vendor -a -tags netgo
         static: false
         ext_ldflags: []

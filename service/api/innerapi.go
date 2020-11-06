@@ -32,7 +32,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-trellis/common/errors"
-	"github.com/go-trellis/config"
 )
 
 func init() {
@@ -56,8 +55,6 @@ type Service struct {
 	mode string
 	opts service.Options
 
-	cfg config.Config
-
 	forwardHeaders []string
 
 	srv *http.Server
@@ -72,8 +69,6 @@ func NewService(opts ...service.OptionFunc) (service.Service, error) {
 		o(&s.opts)
 	}
 
-	s.cfg = config.DefaultGetter.GenMapConfig(s.opts.Config)
-
 	err := s.init()
 	if err != nil {
 		return nil, err
@@ -84,11 +79,11 @@ func NewService(opts ...service.OptionFunc) (service.Service, error) {
 
 func (p *Service) init() (err error) {
 
-	p.mode = p.cfg.GetString("mode")
+	p.mode = p.opts.Config.GetString("mode")
 
 	gin.SetMode(p.mode)
 
-	httpConf := p.cfg.GetValuesConfig("http")
+	httpConf := p.opts.Config.GetValuesConfig("http")
 
 	urlPath := httpConf.GetString("path", "/")
 
@@ -132,7 +127,7 @@ func (p *Service) Start() error {
 
 		var err error
 
-		sslConf := p.cfg.GetConfig("http.ssl")
+		sslConf := p.opts.Config.GetConfig("http.ssl")
 
 		if sslConf != nil && sslConf.GetBoolean("enabled", false) {
 			err = p.srv.ListenAndServeTLS(
@@ -153,7 +148,7 @@ func (p *Service) Start() error {
 // Stop stop service
 func (p *Service) Stop() error {
 
-	dur := p.cfg.GetTimeDuration("http.shutdown-timeout", time.Second*30)
+	dur := p.opts.Config.GetTimeDuration("http.shutdown-timeout", time.Second*30)
 
 	ctx, cancel := context.WithTimeout(context.Background(), dur)
 	defer cancel()
@@ -164,30 +159,30 @@ func (p *Service) Stop() error {
 	return nil
 }
 
-func (p *Service) serve(ctx *gin.Context) {
+func (p *Service) serve(gCtx *gin.Context) {
 	msg := &message.Message{}
 
 	body := &bytes.Buffer{}
-	_, err := body.ReadFrom(ctx.Request.Body)
+	_, err := body.ReadFrom(gCtx.Request.Body)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, msg)
+		gCtx.JSON(http.StatusBadRequest, msg)
 		return
 	}
 
-	msgcodeC, err := codec.GetCodec(ctx.Request.Header.Get("content-type"))
+	msgcodeC, err := codec.GetCodec(gCtx.Request.Header.Get("content-type"))
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, msg)
+		gCtx.JSON(http.StatusBadRequest, msg)
 		return
 	}
 
 	err = msgcodeC.Unmarshal(body.Bytes(), msg)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, msg)
+		gCtx.JSON(http.StatusBadRequest, msg)
 		return
 	}
 
 	for _, h := range p.forwardHeaders {
-		msg.SetHeader(h, ctx.GetHeader(h))
+		msg.SetHeader(h, gCtx.GetHeader(h))
 	}
 
 	p.opts.Logger.Info("request", "message", msg)
@@ -195,11 +190,11 @@ func (p *Service) serve(ctx *gin.Context) {
 	resp, err := clients.CallService(msg,
 		fmt.Sprintf("%s-%s", msg.GetService().String(), msg.GetHeader("Client-IP")))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, msg)
+		gCtx.JSON(http.StatusInternalServerError, msg)
 		return
 	}
 
-	ctx.JSON(200, resp)
+	gCtx.JSON(200, resp)
 }
 
 // Route 路由

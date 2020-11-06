@@ -20,7 +20,7 @@ syntax = "proto3";
 package proto;
 
 enum RegisterType {
-    Cache = 0;
+    CACHE = 0;
     ETCD = 1;
 }
 
@@ -36,15 +36,6 @@ message Service {
     string version = 2;
 }
 
-// message RegistOption {
-//    string name = 1;
-//    string version = 2;
-//    string protocol = 3;
-//    string domain = 4;
-//    uint32 weight = 5;
-//    map<string, string> metadata = 6;
-// }
-
 message Payload {
     string trace_id = 1;
     string trace_ip = 2;
@@ -52,13 +43,13 @@ message Payload {
     Service Service = 4;
     string topic = 5;
     map<string, string> header = 6;
-    bytes req_body = 7;
+    bytes body = 7;
 }
 
-message Callback {
+message Response {
     bytes body = 1;
 }
 
 service RPCService {
-    rpc Call (Payload) returns (Callback);
+    rpc Call (Payload) returns (Response);
 }

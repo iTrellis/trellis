@@ -60,7 +60,7 @@ func (p *RemoteHTTP) Route(topic string) service.HandlerFunc {
 			if err := msg.ToObject(req); err != nil {
 				return nil, err
 			}
-			fmt.Println(string(msg.GetReqBody()))
+			fmt.Println(string(msg.GetBody()))
 			return &RespRemote{Msg: fmt.Sprintf("remote: %s", req.Name)}, nil
 		}
 	}

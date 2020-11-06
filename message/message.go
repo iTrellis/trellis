@@ -37,17 +37,17 @@ func (p *Message) SetBody(body interface{}) error {
 
 	switch bs := body.(type) {
 	case []byte:
-		p.Payload.ReqBody = bs
+		p.Payload.Body = bs
 		return nil
 	case string:
-		p.Payload.ReqBody = []byte(bs)
+		p.Payload.Body = []byte(bs)
 		return nil
 	}
 	err := p.getCodecer()
 	if err != nil {
 		return err
 	}
-	p.Payload.ReqBody, err = p.codecer.Marshal(body)
+	p.Payload.Body, err = p.codecer.Marshal(body)
 	return err
 }
 
@@ -56,7 +56,7 @@ func (p *Message) ToObject(obj interface{}) error {
 	if err := p.getCodecer(); err != nil {
 		return err
 	}
-	return p.codecer.Unmarshal(p.Payload.GetReqBody(), obj)
+	return p.codecer.Unmarshal(p.Payload.GetBody(), obj)
 }
 
 func (p *Message) getCodecer() error {
