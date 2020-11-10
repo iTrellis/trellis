@@ -20,7 +20,8 @@ package service
 import (
 	"fmt"
 
-	"github.com/go-trellis/trellis/internal"
+	"github.com/go-trellis/trellis/message/proto"
+
 	"github.com/go-trellis/trellis/message"
 
 	"github.com/go-trellis/common/logger"
@@ -89,24 +90,23 @@ func RegistNewServiceFunc(name, version string, fn NewServiceFunc) {
 		panic("server function is nil")
 	}
 
-	serviceKey := internal.WorkerTrellisPath(name, version)
+	s := proto.Service{Name: name, Version: version}
 
-	_, exist := serviceFuncs[serviceKey]
+	_, exist := serviceFuncs[s.String()]
 
 	if exist {
-		panic(fmt.Sprintf("server is already registered: %s", serviceKey))
+		panic(fmt.Sprintf("server is already registered: %s", s.String()))
 	}
 
-	serviceFuncs[serviceKey] = fn
-	serverNames = append(serverNames, serviceKey)
+	serviceFuncs[s.String()] = fn
+	serverNames = append(serverNames, s.String())
 }
 
 // New 生成函数对象
-func New(name, version string, opts ...OptionFunc) (Service, error) {
-	serviceKey := internal.WorkerTrellisPath(name, version)
-	fn, exist := serviceFuncs[serviceKey]
+func New(service *proto.Service, opts ...OptionFunc) (Service, error) {
+	fn, exist := serviceFuncs[service.String()]
 	if !exist {
-		return nil, fmt.Errorf("server '%s' not exist", serviceKey)
+		return nil, fmt.Errorf("server '%s' not exist", service.String())
 	}
 	return fn(opts...)
 }

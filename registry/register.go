@@ -22,7 +22,6 @@ import (
 	"sync"
 
 	"github.com/go-trellis/trellis/configure"
-	"github.com/go-trellis/trellis/internal"
 	"github.com/go-trellis/trellis/message/proto"
 
 	"github.com/go-trellis/node"
@@ -66,7 +65,7 @@ func GetNewRegistryFunc(typ proto.RegisterType) (NewRegistryFunc, error) {
 func RegistService(name string, service *configure.RegistService) error {
 	r, ok := defaultRegister.mapRegistries[name]
 	if !ok {
-		return fmt.Errorf("not found service(%s)'s registry (%s)", service.Name, name)
+		return fmt.Errorf("not found service(%s)'s registry (%s)", service.String(), name)
 	}
 
 	return r.Regist(service)
@@ -126,12 +125,10 @@ func runWatcher(w Watcher) {
 			continue
 		}
 
-		path := internal.WorkerTrellisPath(result.Service.Name, result.Service.Version)
-
-		nm, ok := defaultRegister.getNodeManager(path)
+		nm, ok := defaultRegister.getNodeManager(result.Service.String())
 
 		if !ok {
-			nm = node.New(result.NodeType, path)
+			nm = node.New(result.NodeType, result.Service.String())
 		}
 
 		nd := result.ToNode()
@@ -143,18 +140,18 @@ func runWatcher(w Watcher) {
 		default:
 		}
 
-		defaultRegister.setNodeManager(path, nm)
+		SetNodeManager(&result.Service.Service, nm)
 	}
 }
 
 // SetNodeManager 设置节点
-func SetNodeManager(key string, nm node.Manager) {
-	defaultRegister.setNodeManager(key, nm)
+func SetNodeManager(s *proto.Service, nm node.Manager) {
+	defaultRegister.setNodeManager(s.String(), nm)
 }
 
 // GetNodeManager 获取节点
-func GetNodeManager(key string) (node.Manager, bool) {
-	return defaultRegister.getNodeManager(key)
+func GetNodeManager(s *proto.Service) (node.Manager, bool) {
+	return defaultRegister.getNodeManager(s.String())
 }
 
 func (p *Register) setNodeManager(key string, nm node.Manager) {

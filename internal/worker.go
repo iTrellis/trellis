@@ -41,10 +41,10 @@ func WorkerDomainPath(schema, name, version, domain string) string {
 	return fmt.Sprintf("%s/%s/%s/%s", schema, name, version, domain)
 }
 
-// WorkerTrellisPath trellis工作路径
-func WorkerTrellisPath(name, version string) string {
-	return fmt.Sprintf("%s%s/%s", SchemaTrellis, name, version)
-}
+// // WorkerTrellisPath trellis工作路径
+// func WorkerTrellisPath(name, version string) string {
+// 	return fmt.Sprintf("%s%s/%s", SchemaTrellis, name, version)
+// }
 
 // WorkerETCDPath etcd工作路径
 func WorkerETCDPath(name, version string) string {

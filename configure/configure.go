@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 
 	"github.com/go-trellis/common/logger"
-	"github.com/go-trellis/trellis/internal"
 	"github.com/go-trellis/trellis/message/proto"
 
 	"github.com/go-trellis/config"
@@ -54,7 +53,7 @@ type LoggerConfig struct {
 
 // Service service info
 type Service struct {
-	proto.Service `yaml:",inline"`
+	Service proto.Service `yaml:",inline" json:",inline"`
 
 	Options config.Options `yaml:"options" json:"options"`
 
@@ -79,8 +78,8 @@ type Registry struct {
 
 // RegistService service which should regist into registry
 type RegistService struct {
-	Name     string `yaml:"name" json:"name"`
-	Version  string `yaml:"version" json:"version"`
+	Service proto.Service `yaml:",inline" json:",inline"`
+
 	Domain   string `yaml:"domain" json:"domain"`
 	Protocol string `yaml:"protocal" json:"protocal"`
 	Weight   uint32 `yaml:"weight" json:"weight"`
@@ -103,12 +102,12 @@ func ToRegistService(str string) (*RegistService, error) {
 type RegistServices []*RegistService
 
 type Watcher struct {
-	proto.Service `yaml:",inline"`
+	Service proto.Service `yaml:",inline" json:",inline"`
 
 	LoadBalancing node.Type `yaml:"load_balancing" json:"load_balancing"`
 }
 
 // Fullpath fullname
 func (p *Watcher) Fullpath() string {
-	return internal.WorkerTrellisPath(p.GetName(), p.GetVersion())
+	return p.Service.String()
 }

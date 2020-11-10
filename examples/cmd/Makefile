@@ -26,6 +26,10 @@ run_remote2:
 run_grpc: 
 	./grpc run --config=run_grpc.yaml
 
+.PHONY: run_grpc2
+run_grpc2: 
+	./grpc run --config=run_grpc2.yaml
+
 .PHONY: clean
 clean:
 	rm sample remote

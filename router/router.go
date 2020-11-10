@@ -20,6 +20,7 @@ package router
 import (
 	"github.com/go-trellis/trellis/clients"
 	"github.com/go-trellis/trellis/configure"
+	"github.com/go-trellis/trellis/message/proto"
 
 	"github.com/go-trellis/common/logger"
 )
@@ -27,7 +28,7 @@ import (
 // Router 路由器
 type Router interface {
 	NewService(...OptionFunc) error
-	StopService(name, version string) error
+	StopService(*proto.Service) error
 	Run() error
 	Stop() error
 

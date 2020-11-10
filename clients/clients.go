@@ -24,7 +24,6 @@ import (
 
 	"github.com/go-trellis/node"
 
-	"github.com/go-trellis/trellis/internal"
 	"github.com/go-trellis/trellis/message"
 	"github.com/go-trellis/trellis/message/proto"
 	"github.com/go-trellis/trellis/registry"
@@ -39,18 +38,26 @@ type Caller interface {
 	CallService(ctx context.Context, nd *node.Node, msg *message.Message) (resp interface{}, err error)
 }
 
+// var mapCallers = map[string]Caller{}
+
+// // RegistCaller 注册caller
+// func RegistCaller(service *proto.Service, caller Caller) {
+// 	mapCallers[service.String()] = caller
+// }
+
 var mapCallers = map[proto.Protocol]Caller{}
 
 // RegistCaller 注册caller
-func RegistCaller(protocol proto.Protocol, caller Caller) {
-	mapCallers[protocol] = caller
+func RegistCaller(service proto.Protocol, caller Caller) {
+	mapCallers[service] = caller
 }
 
 // CallService 请求服务
 func CallService(msg *message.Message, keys ...string) (resp interface{}, err error) {
 
-	path := internal.WorkerTrellisPath(msg.GetService().GetName(), msg.GetService().GetVersion())
-	nm, ok := registry.GetNodeManager(path)
+	// path := internal.WorkerTrellisPath(msg.GetService().GetName(), msg.GetService().GetVersion())
+	// path := msg.GetService().String()
+	nm, ok := registry.GetNodeManager(msg.GetService())
 	if !ok {
 		return nil, fmt.Errorf("not found service's node manager: %+v", msg.GetService())
 	}

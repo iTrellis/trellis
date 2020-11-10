@@ -92,7 +92,7 @@ func (p *Register) Regist(s *configure.RegistService) (err error) {
 	wer := &worker{
 		service:    s,
 		ticker:     time.NewTicker(p.option.Heartbeat),
-		fullpath:   internal.WorkerETCDDomainPath(s.Name, s.Version, s.Domain),
+		fullpath:   internal.WorkerETCDDomainPath(s.Service.Name, s.Service.Version, s.Domain),
 		stopSignal: make(chan bool),
 	}
 
@@ -178,7 +178,7 @@ func (p *Register) Revoke(s *configure.RegistService) error {
 		return errors.New("domain is empty")
 	}
 
-	fullpath := internal.WorkerETCDDomainPath(s.Name, s.Version, s.Domain)
+	fullpath := internal.WorkerETCDDomainPath(s.Service.Name, s.Service.Version, s.Domain)
 
 	lWorker, ok := p.services.Load(fullpath)
 	if !ok {

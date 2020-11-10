@@ -37,7 +37,7 @@ project:
                         allow-headers: ["X-Requested-With", "X-Cookie", "sso_service_ticket", "Authorization", "Content-Type", "Content-Length", "Origin", "X-ERP", "X-API", "Accept"]
                         expose-headers: ["Content-Length", "Content-Type", "Authorization", "X-Cookie", "sso_service_ticket", "X-ERP", "X-API"]
                 apis:
-                    type: mysql # mysql
+                    type: mysql # mysql,file,grpc
                     mysql:
                         ticker: 30s
                         test:
@@ -55,7 +55,7 @@ project:
                             show_sql: false
                             is_default: true
                             timeout: 5s
-                    # file:
+                    # file: # todo read file
                     #     trellis_test:
                     #         api: trellis.test
                     #         service_name: serviceA

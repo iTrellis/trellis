@@ -52,7 +52,7 @@ func newWatcher(r *Register, conf *configure.Watcher) (registry.Watcher, error) 
 
 	w.ctx, w.cancel = context.WithCancel(context.Background())
 
-	w.fullpath = internal.WorkerETCDPath(w.conf.GetName(), w.conf.GetVersion())
+	w.fullpath = internal.WorkerETCDPath(w.conf.Service.GetName(), w.conf.Service.GetVersion())
 
 	w.watchChan = w.client.Watch(w.ctx, w.fullpath, clientv3.WithPrefix(), clientv3.WithPrevKV())
 
@@ -125,10 +125,10 @@ func (p *watcher) pathToService(bs []byte) (*configure.RegistService, error) {
 		return nil, fmt.Errorf("service path is invalid")
 	}
 	s := &configure.RegistService{
-		Name:    paths[3],
-		Version: paths[4],
-		Domain:  paths[5],
+		Domain: paths[5],
 	}
+	s.Service.Name = paths[3]
+	s.Service.Version = paths[4]
 	return s, nil
 }
 

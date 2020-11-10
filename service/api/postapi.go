@@ -174,6 +174,8 @@ func (p *PostAPI) init() (err error) {
 
 // Start start service
 func (p *PostAPI) Start() error {
+
+	ch := make(chan error)
 	go func() {
 
 		var err error
@@ -190,10 +192,13 @@ func (p *PostAPI) Start() error {
 		}
 
 		if err != http.ErrServerClosed {
-			p.opts.Logger.Error("http_server_closed", err)
+			p.opts.Logger.Error("http_server_closed", err.Error())
 		}
+
+		ch <- err
 	}()
-	return nil
+
+	return <-ch
 }
 
 // Stop stop service

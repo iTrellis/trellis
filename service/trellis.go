@@ -28,7 +28,6 @@ import (
 	"github.com/go-trellis/trellis/clients"
 	"github.com/go-trellis/trellis/configure"
 	"github.com/go-trellis/trellis/errcode"
-	"github.com/go-trellis/trellis/internal"
 	"github.com/go-trellis/trellis/message"
 	"github.com/go-trellis/trellis/message/proto"
 	"github.com/go-trellis/trellis/registry"
@@ -124,26 +123,27 @@ func Run(cfg config.Config, l logger.Logger) (router.Router, error) {
 func (p *Trellis) initServices() error {
 
 	for name, service := range p.proj.Services {
-		service.Name = name
+		service.Service.Name = name
 
-		p.logger.Debug("new service", service.String())
+		p.logger.Debug("new service", service.Service.String())
 
 		err := p.NewService(router.OptionService(service), router.OptionLogger(p.logger))
 		if err != nil {
 			return err
 		}
 
-		path := internal.WorkerTrellisPath(service.GetName(), service.GetVersion())
+		// path := internal.WorkerTrellisPath(service.GetName(), service.GetVersion())
+		path := service.Service.String()
 
 		nm := node.NewDirect(path)
 		nm.Add(&node.Node{
 			ID:       path,
 			Weight:   1,
-			Value:    service.String(),
+			Value:    service.Service.String(),
 			Metadata: map[string]interface{}{"protocol": proto.Protocol_LOCAL},
 		})
 
-		registry.SetNodeManager(path, nm)
+		registry.SetNodeManager(&service.Service, nm)
 	}
 
 	clients.RegistCaller(proto.Protocol_LOCAL, p)
@@ -157,14 +157,15 @@ func (p *Trellis) NewService(opts ...router.OptionFunc) (err error) {
 		o(&p.opts)
 	}
 
-	url := internal.WorkerTrellisPath(p.opts.Service.GetName(), p.opts.Service.GetVersion())
+	// url := internal.WorkerTrellisPath(p.opts.Service.GetName(), p.opts.Service.GetVersion())
+	url := p.opts.Service.Service.String()
 	if _, ok := p.services[url]; ok {
 		err = fmt.Errorf("%s already exists", url)
 		p.opts.Logger.Error("new_service_failed", err.Error())
 		return err
 	}
 
-	s, err := New(p.opts.Service.GetName(), p.opts.Service.GetVersion(),
+	s, err := New(&p.opts.Service.Service,
 		Config(p.opts.Service.Options.ToConfig()),
 		Logger(p.opts.Logger.With(url)),
 	)
@@ -182,7 +183,7 @@ func (p *Trellis) registServices() error {
 	p.logger.Info("regist service start")
 
 	for name, service := range p.proj.Services {
-		service.Name = name
+		service.Service.Name = name
 
 		if service.Registry == nil {
 			continue
@@ -190,8 +191,7 @@ func (p *Trellis) registServices() error {
 		p.logger.Info("regist service start", name, service.Registry)
 
 		regConf := &configure.RegistService{
-			Name:     service.Name,
-			Version:  service.GetVersion(),
+			Service:  service.Service,
 			Domain:   service.Registry.Domain,
 			Protocol: service.Registry.Protocol,
 			Weight:   service.Registry.Weight,
@@ -211,7 +211,7 @@ func (p *Trellis) Run() error {
 	for _, s := range p.services {
 		err := s.Start()
 		if err != nil {
-			errs.Append(err)
+			errs = errs.Append(err)
 		}
 	}
 	if len(errs) != 0 {
@@ -276,11 +276,11 @@ func (p *Trellis) initRegistries() (err error) {
 }
 
 // StopService stop service
-func (p *Trellis) StopService(name, version string) error {
-	url := internal.WorkerTrellisPath(name, version)
-	s, ok := p.services[url]
+func (p *Trellis) StopService(service *proto.Service) error {
+	// url := internal.WorkerTrellisPath(name, version)
+	s, ok := p.services[service.String()]
 	if !ok {
-		err := fmt.Errorf("unknown service: %s, %s", name, version)
+		err := fmt.Errorf("unknown service: %s", service.String())
 		p.opts.Logger.Error("stop_service_failed", err.Error())
 		return err
 	}
@@ -289,22 +289,22 @@ func (p *Trellis) StopService(name, version string) error {
 		return err
 	}
 
-	delete(p.services, url)
+	delete(p.services, service.String())
 	return nil
 }
 
 // GetService get service
-func (p *Trellis) GetService(name, version string) (Service, error) {
-	s, ok := p.services[internal.WorkerTrellisPath(name, version)]
+func (p *Trellis) GetService(service *proto.Service) (Service, error) {
+	s, ok := p.services[service.String()]
 	if !ok {
-		return nil, fmt.Errorf("unknown service: %s, %s", name, version)
+		return nil, fmt.Errorf("unknown service: %s", service.String())
 	}
 	return s, nil
 }
 
 // CallService call service
 func (p *Trellis) CallService(_ context.Context, _ *node.Node, msg *message.Message) (interface{}, error) {
-	s, err := p.GetService(msg.GetService().GetName(), msg.GetService().GetVersion())
+	s, err := p.GetService(msg.GetService())
 	if err != nil {
 		return nil, err
 	}

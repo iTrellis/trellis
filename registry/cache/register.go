@@ -58,50 +58,51 @@ func (p *worker) Init(opts *registry.RegistOption) (err error) {
 	return nil
 }
 
-func (p *worker) Regist(service *configure.RegistService) error {
-	fullpath := internal.WorkerTrellisPath(service.Name, service.Version)
+func (p *worker) Regist(regService *configure.RegistService) error {
+	// fullpath := internal.WorkerTrellisPath(service.Name, service.Version)
+	fullpath := regService.Service.String()
 	values, ok := p.Cache.Lookup(fullpath)
 	if !ok {
 		ss := configure.RegistServices{}
-		ss = append(ss, service)
+		ss = append(ss, regService)
 		if ok = p.Cache.Insert(fullpath, ss); !ok {
 			return fmt.Errorf("regist service failed")
 		}
 		return nil
 	}
 
-	domainPath := internal.WorkerTrellisDomainPath(service.Name, service.Version, service.Domain)
+	domainPath := internal.WorkerTrellisDomainPath(regService.Service.Name, regService.Service.Version, regService.Domain)
 	conf := values[0].(configure.RegistServices)
 
 	for _, c := range conf {
-		cPath := internal.WorkerTrellisDomainPath(c.Name, c.Version, c.Domain)
+		cPath := internal.WorkerTrellisDomainPath(c.Service.Name, c.Service.Version, c.Domain)
 
 		if cPath == domainPath {
-			return fmt.Errorf("service's domain exists: %s, %s, %s", c.Name, c.Version, c.Domain)
+			return fmt.Errorf("service's domain exists: %s, %s, %s", c.Service.Name, c.Service.Version, c.Domain)
 		}
 	}
-	conf = append(conf, service)
+	conf = append(conf, regService)
 	p.Cache.Insert(fullpath, conf)
 	return nil
 }
 
 func (p *worker) Revoke(service *configure.RegistService) error {
-	servicePath := internal.WorkerPath(internal.SchemaTrellis, service.Name, service.Version)
-	values, ok := p.Cache.Lookup(servicePath)
+	// servicePath := internal.WorkerPath(internal.SchemaTrellis, service.Service.Name, service.Service.Version)
+	values, ok := p.Cache.Lookup(service.Service.String())
 	if !ok {
 		return nil
 	}
-	domainPath := internal.WorkerDomainPath(internal.SchemaTrellis, service.Name, service.Version, service.Domain)
+	domainPath := internal.WorkerDomainPath(internal.SchemaTrellis, service.Service.Name, service.Service.Version, service.Domain)
 	conf := values[0].(configure.RegistServices)
 	for i, c := range conf {
-		cPath := internal.WorkerDomainPath(internal.SchemaTrellis, c.Name, c.Version, c.Domain)
+		cPath := internal.WorkerDomainPath(internal.SchemaTrellis, c.Service.Name, c.Service.Version, c.Domain)
 		if cPath == domainPath {
 			conf = append(conf[:i], conf[i+1:]...)
 			break
 		}
 	}
 
-	p.Cache.Insert(servicePath, conf)
+	p.Cache.Insert(service.Service.String(), conf)
 	return nil
 }
 

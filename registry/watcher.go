@@ -61,7 +61,7 @@ func (p *Result) ToNode() *node.Node {
 	}
 
 	return &node.Node{
-		ID:     internal.WorkerTrellisDomainPath(p.Service.Name, p.Service.Version, p.Service.Domain),
+		ID:     internal.WorkerTrellisDomainPath(p.Service.Service.Name, p.Service.Service.Version, p.Service.Domain),
 		Weight: p.Service.Weight,
 		Value:  p.Service.Domain,
 		Metadata: map[string]interface{}{
