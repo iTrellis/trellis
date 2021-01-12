@@ -27,11 +27,11 @@ type consistent struct {
 }
 
 // NewConsistent get consistent node manager
-func NewConsistent(name string) Manager {
-	if name == "" {
-		return nil
+func NewConsistent(name string) (Manager, error) {
+	if name = strings.TrimSpace(name); name == "" {
+		return nil, fmt.Errorf("name should not be nil")
 	}
-	return &consistent{Name: name}
+	return &consistent{Name: name}, nil
 }
 
 func (p *consistent) IsEmpty() bool {
@@ -69,7 +69,6 @@ func (p *consistent) add(pNode *Node) {
 			vnode := *pNode
 			vnode.number = i + 1
 			p.hashes[crc32Hash] = &vnode
-			p.count++
 		}
 	}
 
@@ -77,11 +76,12 @@ func (p *consistent) add(pNode *Node) {
 }
 
 func (p *consistent) NodeFor(keys ...string) (*Node, bool) {
+	p.RLock()
+	defer p.RUnlock()
+
 	if len(keys) == 0 || p.IsEmpty() {
 		return nil, false
 	}
-	p.RLock()
-	defer p.RUnlock()
 
 	return p.hashes[p.rings[p.search(crc32.ChecksumIEEE([]byte(strings.Join(keys, "::"))))]], true
 }
@@ -138,7 +138,6 @@ func (p *consistent) removeByID(id string) {
 			}
 		}
 		delete(p.hashes, crc32Hash)
-		p.count--
 	}
 
 	delete(p.nodes, id)
@@ -161,6 +160,8 @@ func (p *consistent) updateRings() {
 	}
 	sort.Sort(rings)
 	p.rings = rings
+
+	p.count = int64(p.rings.Len())
 }
 
 func (p *consistent) genKey(elt string, idx int) uint32 {

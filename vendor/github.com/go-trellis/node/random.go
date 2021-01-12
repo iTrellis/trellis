@@ -6,6 +6,7 @@ package node
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -23,11 +24,11 @@ type radmon struct {
 }
 
 // NewRadmon get random node manager
-func NewRadmon(name string) Manager {
-	if name == "" {
-		return nil
+func NewRadmon(name string) (Manager, error) {
+	if name = strings.TrimSpace(name); name == "" {
+		return nil, fmt.Errorf("name should not be nil")
 	}
-	return &radmon{Name: name}
+	return &radmon{Name: name}, nil
 }
 
 func (p *radmon) IsEmpty() bool {
@@ -84,33 +85,33 @@ func (p *radmon) removeByID(id string) {
 		return
 	}
 
-	p.count -= int64(node.Weight)
 	delete(p.nodes, id)
 	p.updateRings()
 }
 
 func (p *radmon) NodeFor(...string) (*Node, bool) {
+	p.RLock()
+	defer p.RUnlock()
 	if p.IsEmpty() {
 		return nil, false
 	}
 
-	p.RLock()
-	defer p.RUnlock()
-
 	rand.Seed(time.Now().UnixNano())
 
-	return p.rings[rand.Int63n(p.count-1)], true
+	return p.rings[rand.Int63n(p.count)], true
 }
 
 func (p *radmon) updateRings() {
 	p.rings = make(map[int64]*Node)
+
 	p.count = 0
 	for _, v := range p.nodes {
 
 		for i := 0; i < int(v.Weight); i++ {
 			ring := *v
-			ring.number = uint32(p.count)
+			ring.number = uint32(i + 1)
 			p.rings[p.count] = &ring
+
 			p.count++
 		}
 	}

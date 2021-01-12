@@ -1,0 +1,8 @@
+project:
+    services:
+        -
+            name: component_ping
+            version: v1
+        -
+            name: component_pong
+            version: v1
