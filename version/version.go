@@ -20,7 +20,7 @@ package version
 import (
 	"fmt"
 
-	"github.com/go-trellis/common/builder"
+	"github.com/iTrellis/common/builder"
 )
 
 // ShowAllInfo 展示详细信息

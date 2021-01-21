@@ -21,10 +21,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-trellis/trellis/service"
+	"github.com/iTrellis/trellis/service"
 
-	"github.com/go-trellis/common/logger"
-	"github.com/go-trellis/trellis/service/registry"
+	"github.com/iTrellis/common/logger"
+	"github.com/iTrellis/trellis/service/registry"
 	"github.com/google/uuid"
 )
 

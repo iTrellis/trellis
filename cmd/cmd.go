@@ -1,3 +1,20 @@
+/*
+Copyright © 2020 Henry Huang <hhh@rutcode.com>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+
 package cmd
 
 import (
@@ -5,20 +22,20 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/go-trellis/trellis/configure"
-	"github.com/go-trellis/trellis/doc"
-	"github.com/go-trellis/trellis/route"
-	"github.com/go-trellis/trellis/service"
-	"github.com/go-trellis/trellis/service/component"
-	"github.com/go-trellis/trellis/service/registry"
-	"github.com/go-trellis/trellis/service/router"
-	"github.com/go-trellis/trellis/version"
+	"github.com/iTrellis/trellis/configure"
+	"github.com/iTrellis/trellis/doc"
+	"github.com/iTrellis/trellis/route"
+	"github.com/iTrellis/trellis/service"
+	"github.com/iTrellis/trellis/service/component"
+	"github.com/iTrellis/trellis/service/registry"
+	"github.com/iTrellis/trellis/service/router"
+	"github.com/iTrellis/trellis/version"
 
-	"github.com/go-trellis/common/builder"
-	"github.com/go-trellis/common/formats"
-	"github.com/go-trellis/common/logger"
-	"github.com/go-trellis/config"
-	"github.com/go-trellis/node"
+	"github.com/iTrellis/common/builder"
+	"github.com/iTrellis/common/formats"
+	"github.com/iTrellis/common/logger"
+	"github.com/iTrellis/config"
+	"github.com/iTrellis/node"
 	"github.com/urfave/cli/v2"
 )
 
