@@ -18,10 +18,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package router
 
 import (
-	"context"
-
+	"github.com/iTrellis/node"
 	"github.com/iTrellis/trellis/service"
-	"github.com/iTrellis/trellis/service/message"
 	"github.com/iTrellis/trellis/service/registry"
 )
 
@@ -29,22 +27,23 @@ import (
 type Router interface {
 	service.LifeCycle
 
-	Register
+	// 	Caller
 
-	Caller
-}
+	// 	Registry
+	// }
 
-type Caller interface {
-	Call(context.Context, message.Message) (interface{}, error)
-}
+	// // Caller handle serving messages
+	// type Caller interface {
+	// Remote for handler TODO
+	GetServiceNodes(...ReadOption) ([]*node.Node, error) // []*node.Node || component
+	// }
 
-// Register router register
-type Register interface {
+	// // Registry router registry
+	// type Registry interface {
 	RegisterRegistry(string, registry.Registry) error
 	DeregisterRegistry(string) error
 
 	RegisterService(string, *registry.Service, ...registry.RegisterOption) error
-	DeregisterService(string, *registry.Service) error
-
-	Watch(...registry.WatchOption) (registry.Watcher, error)
+	DeregisterService(string, *registry.Service, ...registry.DeregisterOption) error
+	WatchService(string, ...registry.WatchOption) error
 }

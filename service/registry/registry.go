@@ -17,10 +17,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package registry
 
-import "github.com/iTrellis/common/logger"
-
 // NewRegistryFunc new registry function
-type NewRegistryFunc func(logger logger.Logger, opts ...Option) (Registry, error)
+type NewRegistryFunc func(...Option) (Registry, error)
 
 // Registry The registry provides an interface for service discovery
 // and an abstraction over varying implementations
@@ -29,11 +27,17 @@ type Registry interface {
 	Init(...Option) error
 	Options() Options
 
-	Regist(*Service, ...RegisterOption) error
-	Revoke(*Service, ...RevokeOption) error
+	ProcessService
 
-	Watch(...WatchOption) (Watcher, error)
+	Stop() error
 
 	ID() string
 	String() string
+}
+
+// ProcessService Process register service
+type ProcessService interface {
+	Register(*Service, ...RegisterOption) error
+	Deregister(*Service, ...DeregisterOption) error
+	Watch(...WatchOption) (Watcher, error)
 }

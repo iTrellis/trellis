@@ -1,0 +1,177 @@
+/*
+Copyright © 2020 Henry Huang <hhh@rutcode.com>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+
+package routes
+
+import (
+	"errors"
+	"fmt"
+	"reflect"
+	"sync"
+
+	"github.com/iTrellis/common/logger"
+	"github.com/iTrellis/trellis/service"
+	"github.com/iTrellis/trellis/service/component"
+)
+
+type compManager struct {
+	sync.RWMutex
+
+	logger logger.Logger
+
+	components map[string]component.Component
+
+	newComponentFuncs map[string]component.NewComponentFunc
+
+	componentNames []string
+}
+
+// NewCompManager new default component manager
+func NewCompManager() component.Manager {
+	return &compManager{
+
+		components:        make(map[string]component.Component),
+		newComponentFuncs: make(map[string]component.NewComponentFunc),
+	}
+}
+
+// RegisterComponent regist component function
+func (p *compManager) RegisterComponentFunc(service *service.Service, fn component.NewComponentFunc) {
+
+	if service == nil || len(service.Name) == 0 {
+		panic("component name is empty")
+	}
+
+	if fn == nil {
+		panic("component fn is nil")
+	}
+
+	p.RLock()
+	_, exist := p.newComponentFuncs[service.FullPath()]
+	p.RUnlock()
+	if exist {
+		panic(fmt.Sprintf("component already registered: %s", service.FullPath()))
+	}
+
+	p.Lock()
+	p.newComponentFuncs[service.FullPath()] = fn
+	p.componentNames = append(p.componentNames, service.FullPath())
+	p.Unlock()
+}
+
+// ListComponents get components
+func (p *compManager) ListComponents() []component.Describe {
+
+	var desc []component.Describe
+
+	for _, name := range p.componentNames {
+		p.RLock()
+		cpt := p.components[name]
+		p.RUnlock()
+
+		desc = append(desc, component.Describe{
+			Name: name,
+			// RegisterFunc: runtime.FuncForPC(reflect.ValueOf(cpt).Pointer()).Name(),
+			RegisterFunc: reflect.ValueOf(cpt).String(),
+			Component:    cpt,
+		})
+	}
+
+	return desc
+}
+
+// NewComponent new component
+func (p *compManager) NewComponent(service *service.Service, alias string, opts ...component.Option) (
+	component.Component, error) {
+	p.RLock()
+	fn, ok := p.newComponentFuncs[service.FullPath()]
+	p.RUnlock()
+	if !ok {
+		return nil, fmt.Errorf("component driver '%s' not exist", service.FullPath())
+	}
+
+	cpt, err := fn(alias, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	p.Lock()
+	p.components[service.FullPath()] = cpt
+	p.Unlock()
+
+	return cpt, nil
+}
+
+// GetComponent get component
+func (p *compManager) GetComponent(s *service.Service) (cpt component.Component, err error) {
+	p.RLock()
+	cpt, ok := p.components[s.FullPath()]
+	p.RUnlock()
+	if !ok {
+		return nil, errors.New("component is not exists")
+	}
+	return cpt, nil
+}
+
+// type compResp struct {
+// 	r   interface{}
+// 	err error
+// }
+
+// // GetComponent get component
+// func (p *compManager) Call(msg message.Message, opts ...component.CallOption) (interface{}, error) {
+
+// 	cpt, err := p.GetComponent(msg.Service())
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	options := component.CallOptions{}
+// 	for _, o := range opts {
+// 		o(&options)
+// 	}
+
+// 	if options.Timeout == 0 {
+// 		options.Timeout = 10 * time.Second
+// 	}
+
+// 	h := cpt.Route(msg.Topic())
+// 	if h == nil {
+// 		return nil, errors.New("not found handler")
+// 	}
+
+// 	ctx, cancel := context.WithTimeout(context.Background(), options.Timeout)
+// 	defer cancel()
+
+// 	ch := make(chan compResp)
+
+// 	go func() {
+// 		respH, err := h(msg)
+// 		ch <- compResp{
+// 			r:   respH,
+// 			err: err,
+// 		}
+// 	}()
+
+// 	select {
+// 	case res := <-ch:
+// 		// return res
+// 		return res.r, res.err
+// 	case <-ctx.Done():
+// 		return nil, errors.New("component exceed timeout")
+// 	}
+// }

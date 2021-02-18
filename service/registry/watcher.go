@@ -33,13 +33,6 @@ type Watcher interface {
 	Stop()
 }
 
-// Service service
-type Service struct {
-	service.Service `json:",inline" yaml:",inline"`
-
-	Nodes []*node.Node `json:"nodes" yaml:"nodes"`
-}
-
 // Result is registry result
 type Result struct {
 	// Id is registry id
@@ -50,4 +43,11 @@ type Result struct {
 	Timestamp time.Time
 	// Service is registry service
 	Service *Service
+}
+
+// Service service
+type Service struct {
+	service.Service `json:",inline" yaml:",inline"`
+
+	*node.Node `json:"node" yaml:"node"`
 }

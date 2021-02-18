@@ -21,32 +21,38 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
-	"github.com/iTrellis/trellis/configure"
-	"github.com/iTrellis/trellis/doc"
-	"github.com/iTrellis/trellis/route"
-	"github.com/iTrellis/trellis/service"
-	"github.com/iTrellis/trellis/service/component"
-	"github.com/iTrellis/trellis/service/registry"
-	"github.com/iTrellis/trellis/service/router"
-	"github.com/iTrellis/trellis/version"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/iTrellis/common/builder"
 	"github.com/iTrellis/common/formats"
 	"github.com/iTrellis/common/logger"
 	"github.com/iTrellis/config"
-	"github.com/iTrellis/node"
+	"github.com/iTrellis/trellis/configure"
+	"github.com/iTrellis/trellis/doc"
+	"github.com/iTrellis/trellis/routes"
+	"github.com/iTrellis/trellis/service"
+	"github.com/iTrellis/trellis/service/component"
+	"github.com/iTrellis/trellis/service/registry"
+	"github.com/iTrellis/trellis/version"
+
 	"github.com/urfave/cli/v2"
 )
 
+// Cmd command
 type Cmd interface {
+	// Init initialises options
+	// Note: Use Run to parse command line
 	Init(opts ...Option) error
+	// Options set within this command
+	Options() Options
 
 	App() *cli.App
 
 	AddRegistryFunc(service.RegisterType, registry.NewRegistryFunc)
 
-	component.Manager
+	GetRoutesManager() routes.Manager
 
 	service.LifeCycle
 
@@ -60,13 +66,13 @@ type cmd struct {
 
 	config configure.Configure
 
-	router router.Router
-
-	component.Manager
+	routesManager routes.Manager
 
 	newRegistryFuncs map[service.RegisterType]registry.NewRegistryFunc
 
 	logger logger.Logger
+
+	writers []logger.Writer
 
 	hiddenVersions []string
 }
@@ -79,6 +85,10 @@ func (p *cmd) AddRegistryFunc(t service.RegisterType, fn registry.NewRegistryFun
 	p.newRegistryFuncs[t] = fn
 }
 
+func (p *cmd) Options() Options {
+	return p.opts
+}
+
 func (p *cmd) Start() error {
 	builder.Show()
 
@@ -88,28 +98,41 @@ func (p *cmd) Start() error {
 			return errors.New("unsupported registry type")
 		}
 
-		reg, err := fn(p.logger)
+		opts := []registry.Option{}
+
+		// todo ctx
+		ctx := context.Background()
+
+		opts = append(opts,
+			registry.Adds(regConfig.Address),
+			registry.Timeout(regConfig.Timeout),
+			registry.Context(ctx),
+			registry.Logger(p.logger),
+		)
+
+		reg, err := fn(opts...)
 		if err != nil {
 			return err
 		}
 
-		err = p.router.RegisterRegistry(regConfig.Name, reg)
+		err = p.routesManager.Router().RegisterRegistry(regConfig.Name, reg)
 		if err != nil {
 			return err
 		}
 
-		// todo watcher
-		// for _, w := range regConfig.Watcher.Services {
-		// 	// p.route
-		// }
+		for _, w := range regConfig.Watchers {
+			p.routesManager.Router().WatchService(regConfig.Name, registry.WatchService(w.Service), registry.WatchContext(w.Options))
+		}
 	}
 
 	for _, serviceConf := range p.config.Project.Services {
 
-		_, err := route.DefaultLocalRoute.NewComponent(
+		node := serviceConf.ToNode()
+		_, err := p.routesManager.CompManager().NewComponent(
 			&serviceConf.Service, serviceConf.Alias,
 			component.Logger(p.logger),
-			component.Router(p.router),
+			component.Caller(p.routesManager),
+			component.Config(node.Metadata.ToConfig()),
 		)
 		if err != nil {
 			return err
@@ -119,30 +142,31 @@ func (p *cmd) Start() error {
 			continue
 		}
 
-		ctx := context.Background()
+		opts := []registry.RegisterOption{}
+		// ctx := context.Background()
+		// for k, v := range serviceConf.Registry.Options {
+		// 	ctx = context.WithValue(ctx, k, v)
+		// }
 
-		for k, v := range serviceConf.Registry.Options {
-			ctx = context.WithValue(ctx, k, v)
-		}
+		opts = append(opts, registry.RegisterTTL(formats.ParseStringTime(serviceConf.Registry.TTL, 0)))
+		// opts = append(opts, registry.RegisterContext(ctx))
 
-		regService := &registry.Service{
-			Service: serviceConf.Service,
-			Nodes:   []*node.Node{serviceConf.ToNode()},
-		}
+		p.logger.Debug("regist service for registry", serviceConf)
 
-		err = p.router.RegisterService(
+		if err = p.routesManager.Router().RegisterService(
 			serviceConf.Registry.Name,
-			regService,
-			registry.RegisterTTL(formats.ParseStringTime(serviceConf.Registry.TTL, 0)),
-			registry.RegisterContext(ctx),
-		)
-
-		if err != nil {
+			&registry.Service{
+				Service: serviceConf.Service,
+				// Nodes:   []*node.Node{serviceConf.ToNode()},
+				Node: node,
+			},
+			opts...,
+		); err != nil {
 			return err
 		}
 	}
 
-	return p.router.Start()
+	return p.routesManager.Start()
 }
 
 func (p *cmd) Init(opts ...Option) error {
@@ -164,7 +188,13 @@ func (p *cmd) Init(opts ...Option) error {
 }
 
 func (p *cmd) Stop() error {
-	return p.router.Stop()
+	if err := p.routesManager.Stop(); err != nil {
+		return err
+	}
+
+	p.logger.ClearSubscribers()
+
+	return nil
 }
 
 func (p *cmd) App() *cli.App {
@@ -172,7 +202,16 @@ func (p *cmd) App() *cli.App {
 }
 
 func (p *cmd) Run() error {
-	return nil
+
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, syscall.SIGTERM, syscall.SIGINT, syscall.SIGKILL)
+
+	select {
+	case <-ch:
+	}
+
+	fmt.Println("exit")
+	return p.Stop()
 }
 
 func (p *cmd) document(ctx *cli.Context) (err error) {
@@ -202,11 +241,13 @@ func (p *cmd) document(ctx *cli.Context) (err error) {
 	return
 }
 
+func (p *cmd) GetRoutesManager() routes.Manager {
+	return p.routesManager
+}
+
 func New() Cmd {
 	cmd := &cmd{
 		newRegistryFuncs: DefaultNewRegistryFuncs,
-
-		Manager: route.DefaultLocalRoute,
 
 		logger: logger.NewLogger(),
 
@@ -215,7 +256,18 @@ func New() Cmd {
 		hiddenVersions: DefaultHiddenVersions,
 	}
 
-	cmd.router = route.NewRouter(route.Logger(cmd.logger), route.LocalRouter(route.DefaultLocalRoute))
+	logW, err := logger.ChanWriter(cmd.logger, logger.ChanWiterLevel(logger.DebugLevel))
+	if err != nil {
+		panic(err)
+	}
+
+	cmd.routesManager = routes.NewManager(
+		routes.Logger(cmd.logger),
+		routes.CompManager(DefaultCompManager),
+		routes.WithRouter(routes.NewRoutes(cmd.logger)),
+	)
+
+	cmd.writers = append(cmd.writers, logW)
 
 	cmd.app.Commands = cli.Commands{
 		&cli.Command{
@@ -238,8 +290,7 @@ func New() Cmd {
 			Name:  "components",
 			Usage: "list of local components",
 			Action: func(ctx *cli.Context) error {
-
-				cptsDes := cmd.Manager.ListComponents()
+				cptsDes := cmd.routesManager.CompManager().ListComponents()
 				for _, cpt := range cptsDes {
 					fmt.Printf("%s: %s", cpt.Name, cpt.RegisterFunc)
 				}

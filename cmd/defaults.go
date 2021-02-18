@@ -18,6 +18,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"github.com/iTrellis/trellis/routes"
+	"github.com/iTrellis/trellis/sd/etcd"
 	"github.com/iTrellis/trellis/sd/memory"
 	"github.com/iTrellis/trellis/service"
 	"github.com/iTrellis/trellis/service/component"
@@ -25,13 +27,23 @@ import (
 )
 
 var (
+	// DefaultNewRegistryFuncs new registry functions
 	DefaultNewRegistryFuncs = map[service.RegisterType]registry.NewRegistryFunc{
-		// sd.RegistryETCD:
 		// sd.RegistryMDNS:
 		service.RegisterType_memory: memory.NewRegistry,
+		service.RegisterType_etcd:   etcd.NewRegistry,
 	}
 
-	DefaultNewComponentFuncs = map[service.Service]component.NewComponentFunc{}
+	// DefaultNewComponentFuncs = map[string]component.NewComponentFunc{}
 
+	// DefaultHiddenVersions hidden versions
 	DefaultHiddenVersions = []string{"0", "0.0", "0.0.0", "v0", "v0.0", "v0.0.0"}
+
+	// DefaultCompManager default components manager
+	DefaultCompManager = routes.NewCompManager()
 )
+
+// RegisterComponentFunc regist component funciton into default local route
+func RegisterComponentFunc(service *service.Service, fn component.NewComponentFunc) {
+	DefaultCompManager.RegisterComponentFunc(service, fn)
+}

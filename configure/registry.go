@@ -18,7 +18,9 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package configure
 
 import (
-	"github.com/iTrellis/node"
+	"time"
+
+	"github.com/iTrellis/config"
 	"github.com/iTrellis/trellis/service"
 )
 
@@ -26,13 +28,15 @@ type Registry struct {
 	Name string               `json:"name" yaml:"name"`
 	Type service.RegisterType `json:"type" yaml:"type"`
 
-	Address []string `json:"address" yaml:"address"`
-	Secure  bool     `json:"secure" yaml:"secure"`
+	Address []string      `json:"address" yaml:"address"`
+	Secure  bool          `json:"secure" yaml:"secure"`
+	Timeout time.Duration `json:"timeout" yaml:"timeout"`
 
-	Watcher `json:",inline" yaml:",inline"`
+	Watchers []Watcher `json:"watchers" yaml:"watchers"`
 }
 
 type Watcher struct {
-	Services []service.Service `json:"services" yaml:"services"`
-	NodeType node.Type         `json:"type" yaml:"type"`
+	service.Service `json:",inline" yaml:",inline"`
+
+	Options config.Options `json:"options" yaml:"options"`
 }

@@ -18,20 +18,17 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package component
 
 import (
-	"context"
-
+	"github.com/iTrellis/common/logger"
+	"github.com/iTrellis/config"
 	"github.com/iTrellis/trellis/service"
 	"github.com/iTrellis/trellis/service/message"
-	"github.com/iTrellis/trellis/service/router"
-
-	"github.com/iTrellis/common/logger"
 )
 
 // NewComponentFunc 服务对象生成函数申明
 type NewComponentFunc func(alias string, opts ...Option) (Component, error)
 
 // Handler handle the message function
-type Handler func(context.Context, message.Message) (interface{}, error)
+type Handler func(message.Message) (interface{}, error)
 
 // Middleware middlerwares for next handler
 type Middleware func(Handler) Handler
@@ -45,7 +42,8 @@ type Component interface {
 	Route(topic string) Handler
 }
 
-type ComponentDescribe struct {
+// Describe description of component
+type Describe struct {
 	Name         string
 	RegisterFunc string
 	Component    Component
@@ -56,15 +54,15 @@ type Option func(*Options)
 
 // Options 参数对象
 type Options struct {
-	Logger  logger.Logger
-	Context context.Context
-	Router  router.Router
+	Logger logger.Logger
+	Config config.Config
+	Caller message.Caller
 }
 
-// Context 注入配置
-func Context(c context.Context) Option {
+// Config 注入配置
+func Config(c config.Config) Option {
 	return func(p *Options) {
-		p.Context = c
+		p.Config = c
 	}
 }
 
@@ -75,9 +73,9 @@ func Logger(l logger.Logger) Option {
 	}
 }
 
-// Router 路由表，可用与服务间调用
-func Router(r router.Router) Option {
+// Caller remote service
+func Caller(c message.Caller) Option {
 	return func(p *Options) {
-		p.Router = r
+		p.Caller = c
 	}
 }

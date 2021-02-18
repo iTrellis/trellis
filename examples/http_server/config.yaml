@@ -1,0 +1,21 @@
+project:
+    services:
+        -
+            name: component_ping
+            version: v1
+        -
+            name: component_pong
+            version: v1
+        -
+            name: trellis-postapi
+            version: v1
+            options:
+                gin_mode: debug
+                apis:
+                    file:
+                        trellis-test:
+                            api: trellis.ping
+                            service_name: component_ping
+                            service_version: v1
+                            topic: ping
+

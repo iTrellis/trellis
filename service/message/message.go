@@ -17,30 +17,53 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package message
 
-import "github.com/iTrellis/trellis/service"
+import (
+	"context"
+
+	"github.com/iTrellis/trellis/service"
+	"github.com/iTrellis/trellis/service/codec"
+)
+
+// header keys
+const (
+	XAPIToken   = "x-api-token"
+	XAPITraceID = "x-api-trace-id"
+	XClientIP   = "x-client-ip"
+)
 
 // Message is the interface for publishing asynchronously
 type Message interface {
 	Service() *service.Service
+	Codec() codec.Codec
 	Topic() string
-	Payload() *BasePayload
-	ContentType() string
+	SetTopic(string)
+	SetBody(v interface{}) error
+	GetPayload() *Payload
+	ToObject(v interface{}) error
 }
 
-// Payload payload between services
-type Payload struct {
-	ID       string
-	Target   string
-	Method   string
-	Endpoint string
-	Error    string
-
-	BasePayload
+// Caller caller for calling component or server
+type Caller interface {
+	CallComponent(context.Context, Message) (interface{}, error)
+	CallServer(ctx context.Context, msg Message) (interface{}, error)
 }
 
-// BasePayload payload between services
-type BasePayload struct {
-	// The values read from the socket
-	Header map[string]string
-	Body   []byte
+func (p *Payload) Set(key, value string) {
+	header := p.GetHeader()
+	if header == nil {
+		header = make(map[string]string)
+	}
+
+	header[key] = value
+
+	p.Header = header
+}
+
+func (p *Payload) Get(key string) string {
+	header := p.GetHeader()
+	if header == nil {
+		return ""
+	}
+
+	return header[key]
 }

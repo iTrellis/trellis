@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package message;
+
+option go_package = "github.com/iTrellis/trellis/service/message;message";
+
+import "service.proto";
+
+message Request {
+    string id = 1;
+	service.Service service = 2;
+    string endpoint = 3;
+    Payload payload = 4;
+}
+
+message Response {
+	bytes body = 1;
+    map<string, string> header = 2;
+}
+
+message Payload {
+    map<string, string> header = 2;
+	bytes body = 3;
+}

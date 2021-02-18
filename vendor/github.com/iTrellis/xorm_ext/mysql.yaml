@@ -1,0 +1,26 @@
+## GNU GPL v3 License
+## Copyright (c) 2019 github.com:iTrellis
+
+## database name
+test:
+  host:     localhost             ## default localhost
+  port:     3306                  ## default 3306
+  user:     root                  ## default root
+  driver:   mysql                 ## default mysql
+  password: ""                    ## default 3306
+  charset:  utf8                  ## default utf8
+  location: "Asia/Shanghai"       ## default "Local"
+  parseTime: "True"               ## default "True"
+  allow_native_passwords: "true"  ## default "true"
+  show_sql: true                  ## default false
+  max_idle_conns: 10              ## default 10
+  max_open_conns: 100             ## default 100
+  ## xorm_log_level: LOG_DEBUG = iota LOG_INFO LOG_WARNING LOG_ERR LOG_OFF LOG_UNKNOWN
+  log_level: 3                    ## default LOG_DEBUG
+  is_default: true                ## default false
+  timeout: 5s                     ## default 5s
+## simple mysql
+test2:
+  host: localhost
+  port: 3306
+  user: root

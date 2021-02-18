@@ -17,7 +17,9 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package message
 
-import "github.com/iTrellis/trellis/service"
+import (
+	service "github.com/iTrellis/trellis/service"
+)
 
 // Option used by NewMessage
 type Option func(*Options)
@@ -25,32 +27,18 @@ type Option func(*Options)
 // Options parameters
 type Options struct {
 	Service *service.Service
-	Topic   string
-	Payload *BasePayload
 
-	ContentType string
+	Payload *Payload
 }
 
-func ContentType(ct string) Option {
-	return func(o *Options) {
-		o.ContentType = ct
-	}
-}
-
-func Topic(topic string) Option {
-	return func(o *Options) {
-		o.Topic = topic
-	}
-}
-
-func MessagePayload(payload *BasePayload) Option {
+func MessagePayload(payload *Payload) Option {
 	return func(o *Options) {
 		o.Payload = payload
 	}
 }
 
-func Service(s *service.Service) Option {
+func Service(s service.Service) Option {
 	return func(o *Options) {
-		o.Service = s
+		o.Service = &s
 	}
 }

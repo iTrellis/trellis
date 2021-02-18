@@ -18,7 +18,9 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package configure
 
 import (
-	"github.com/iTrellis/common/encryption/hash"
+	"time"
+
+	"github.com/google/uuid"
 	"github.com/iTrellis/config"
 	"github.com/iTrellis/node"
 	"github.com/iTrellis/trellis/service"
@@ -29,33 +31,44 @@ type Service struct {
 
 	service.Service `json:",inline" yaml:",inline"`
 
-	Address string `json:"address" yaml:"address"`
-	Weight  uint32 `json:"weight" yaml:"weight"`
+	Protocol service.Protocol `json:"protocol" yaml:"protocol"`
 
-	TransportType service.TransportType `json:"transport_type" yaml:"transport_type"`
+	Options config.Options `json:"options" yaml:"options"`
 
 	Registry *ServiceRegistry `json:"registry" yaml:"registry"`
 }
 
 type ServiceRegistry struct {
 	Name string `json:"name" yaml:"name"`
-	TTL  string `json:"ttl" yaml:"ttl"`
+
+	TTL        string        `json:"ttl" yaml:"ttl"`
+	Heartbeat  time.Duration `json:"heartbeat" yaml:"heartbeat"`
+	RetryTimes uint32        `json:"retry_times" yaml:"retry_times"`
+
+	Address string `json:"address" yaml:"address"`
+	Weight  uint32 `json:"weight" yaml:"weight"`
 
 	Options config.Options `json:"options" yaml:"options"`
 }
 
-func (s *Service) ToNode() *node.Node {
-	n := &node.Node{
-		ID:     hash.NewCRCIEEE().Sum(s.Service.FullPath(s.Address)),
-		Value:  s.Address,
-		Weight: s.Weight,
+func (p *Service) ToNode() *node.Node {
+	n := &node.Node{}
+
+	if p.Registry == nil {
+		n.ID = p.ID(uuid.New().String())
+		n.Weight = 1
+	} else {
+		n.ID = p.ID(p.Registry.Address)
+		n.Value = p.Registry.Address
+		n.Weight = p.Registry.Weight
 	}
+	n.Metadata = p.Options
 
 	if n.Metadata == nil {
 		n.Metadata = config.Options{}
 	}
 
-	n.Metadata["transport_type"] = s.TransportType
+	n.Metadata["protocol"] = p.Protocol
 
 	return n
 }

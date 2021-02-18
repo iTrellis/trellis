@@ -22,6 +22,8 @@ import (
 	"crypto/tls"
 	"time"
 
+	"github.com/iTrellis/common/logger"
+	"github.com/iTrellis/config"
 	"github.com/iTrellis/trellis/service"
 )
 
@@ -37,6 +39,44 @@ type Options struct {
 	// Other options for implementations of the interface
 	// can be stored in a context
 	Context context.Context
+
+	Logger logger.Logger
+}
+
+func Adds(addrs []string) Option {
+	return func(o *Options) {
+		o.Addrs = addrs
+	}
+}
+
+func Timeout(timeout time.Duration) Option {
+	return func(o *Options) {
+		o.Timeout = timeout
+	}
+}
+
+func Secure(secure bool) Option {
+	return func(o *Options) {
+		o.Secure = secure
+	}
+}
+
+func TLSConfig(tlsConfig *tls.Config) Option {
+	return func(o *Options) {
+		o.TLSConfig = tlsConfig
+	}
+}
+
+func Context(ctx context.Context) Option {
+	return func(o *Options) {
+		o.Context = ctx
+	}
+}
+
+func Logger(l logger.Logger) Option {
+	return func(o *Options) {
+		o.Logger = l
+	}
 }
 
 // RegisterOption options' of registing service functions
@@ -48,25 +88,32 @@ func RegisterTTL(ttl time.Duration) RegisterOption {
 	}
 }
 
-func RegisterContext(ctx context.Context) RegisterOption {
+func RegisterHeartbeat(hb time.Duration) RegisterOption {
 	return func(o *RegisterOptions) {
-		o.Context = ctx
+		o.Heartbeat = hb
+	}
+}
+
+func RegisterRetryTimes(rTimes uint32) RegisterOption {
+	return func(o *RegisterOptions) {
+		o.RetryTimes = rTimes
 	}
 }
 
 // RegisterOptions regist service Options
 type RegisterOptions struct {
 	TTL time.Duration
-	// Other options for implementations of the interface
-	// can be stored in a context
-	Context context.Context
+
+	Heartbeat time.Duration
+
+	RetryTimes uint32
 }
 
-// RevokeOption options' of revoking service functions
-type RevokeOption func(*RevokeOptions)
+// DeregisterOption options' of deregistering service functions
+type DeregisterOption func(*DeregisterOptions)
 
-// RevokeOptions revoke service Options
-type RevokeOptions struct {
+// DeregisterOptions deregister service Options
+type DeregisterOptions struct {
 	TTL time.Duration
 	// Other options for implementations of the interface
 	// can be stored in a context
@@ -81,12 +128,18 @@ type WatchOptions struct {
 	Service service.Service
 	// Other options for implementations of the interface
 	// can be stored in a context
-	Context context.Context
+	Options config.Options
 }
 
 func WatchService(service service.Service) WatchOption {
 	return func(w *WatchOptions) {
 		w.Service = service
+	}
+}
+
+func WatchContext(opts config.Options) WatchOption {
+	return func(w *WatchOptions) {
+		w.Options = opts
 	}
 }
 

@@ -1,0 +1,18 @@
+project:
+  services:
+    -
+      name: component_ping
+      version: v1
+  registries:
+    -
+      name: grpc_test
+      type: 1
+      address: ["127.0.0.1:2379"]
+      secure: false
+      watchers:
+        -
+          # domain: 
+          name: component_pong
+          version: v1
+          options:
+            node_type: 3

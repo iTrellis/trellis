@@ -22,9 +22,8 @@ import (
 	"time"
 
 	"github.com/iTrellis/trellis/service"
-
-	"github.com/iTrellis/common/logger"
 	"github.com/iTrellis/trellis/service/registry"
+
 	"github.com/google/uuid"
 )
 
@@ -39,14 +38,13 @@ type memory struct {
 
 	options registry.Options
 
-	logger logger.Logger
-
+	// map[serviceFullName]map[version]*registry.Service
 	services map[string]map[string]*registry.Service
 	watchers map[string]*Watcher
 }
 
 // NewRegistry 生成新对象
-func NewRegistry(logger logger.Logger, opts ...registry.Option) (registry.Registry, error) {
+func NewRegistry(opts ...registry.Option) (registry.Registry, error) {
 	options := registry.Options{}
 	for _, o := range opts {
 		o(&options)
@@ -56,7 +54,6 @@ func NewRegistry(logger logger.Logger, opts ...registry.Option) (registry.Regist
 		id: uuid.New().String(),
 
 		options: options,
-		logger:  logger,
 
 		// domain/service version
 		services: make(map[string]map[string]*registry.Service),
@@ -80,7 +77,7 @@ func (p *memory) Options() registry.Options {
 	return p.options
 }
 
-func (p *memory) Regist(regService *registry.Service, ofs ...registry.RegisterOption) error {
+func (p *memory) Register(regService *registry.Service, ofs ...registry.RegisterOption) error {
 	p.Lock()
 	defer p.Unlock()
 	serviceName := regService.Service.FullName()
@@ -89,16 +86,20 @@ func (p *memory) Regist(regService *registry.Service, ofs ...registry.RegisterOp
 		nodes = make(map[string]*registry.Service)
 	}
 
-	p.logger.Debugf("Registry (memory) added new service: %+v", regService)
+	p.options.Logger.Debugf("Registry (memory) added new service: %+v", regService.Service)
 
 	nodes[regService.Service.Version] = regService
 
-	go p.sendEvent(&registry.Result{Type: service.EventType_update, Service: regService})
+	go p.sendEvent(&registry.Result{
+		ID:        p.id,
+		Timestamp: time.Now(),
+		Type:      service.EventType_update,
+		Service:   regService})
 
 	return nil
 }
 
-func (p *memory) Revoke(regService *registry.Service, ofs ...registry.RevokeOption) error {
+func (p *memory) Deregister(regService *registry.Service, ofs ...registry.DeregisterOption) error {
 	p.Lock()
 	defer p.Unlock()
 	serviceName := regService.Service.FullName()
@@ -108,16 +109,20 @@ func (p *memory) Revoke(regService *registry.Service, ofs ...registry.RevokeOpti
 	}
 
 	if _, ok := nodes[regService.Service.Version]; ok {
-		p.logger.Debugf("Registry (memory) removed service' version: %+v", regService)
+		p.options.Logger.Debugf("Registry (memory) removed service' version: %+v", regService)
 		delete(p.services[serviceName], regService.Service.Version)
 	}
 
 	if len(p.services[serviceName]) == 0 {
-		p.logger.Debugf("Registry (memory) removed service: %+v", regService)
+		p.options.Logger.Debugf("Registry (memory) removed service: %+v", regService)
 		delete(p.services, serviceName)
 	}
 
-	go p.sendEvent(&registry.Result{Type: service.EventType_delete, Service: regService})
+	go p.sendEvent(&registry.Result{
+		ID:        p.id,
+		Timestamp: time.Now(),
+		Type:      service.EventType_delete,
+		Service:   regService})
 
 	return nil
 }
@@ -142,12 +147,16 @@ func (p *memory) Watch(opts ...registry.WatchOption) (registry.Watcher, error) {
 	return w, nil
 }
 
+func (p *memory) Stop() error {
+	return nil
+}
+
 func (p *memory) ID() string {
 	return p.id
 }
 
 func (p *memory) String() string {
-	return "cache"
+	return service.RegisterType_memory.String()
 }
 
 func (p *memory) sendEvent(r *registry.Result) {

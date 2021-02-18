@@ -21,21 +21,25 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/iTrellis/common/encryption/hash"
 )
 
-const defDomain = "trellis"
-
-// Service service basic info
-type Service struct {
-	Domain  string `json:"domain" yaml:"domain"`
-	Name    string `json:"name" yaml:"name"`
-	Version string `json:"version" yaml:"version"`
-}
+const (
+	defDomain = "trellis"
+	registry  = "/trellis/registry/"
+)
 
 func (p *Service) init() {
 	if p.Domain == "" {
 		p.Domain = defDomain
 	}
+}
+
+// ID gen service id
+func (p *Service) ID(ps ...string) string {
+	p.init()
+	return hash.NewCRCIEEE().Sum(p.FullPath(ps...))
 }
 
 // FullName Service full name
@@ -54,7 +58,20 @@ func (p *Service) FullPath(ps ...string) string {
 		ss = append(ss, ReplaceURL(s))
 	}
 
-	return "/" + strings.Join(ss, "/")
+	return fmt.Sprintf("/%s", strings.Join(ss, "/"))
+}
+
+// FullRegistry Service full registry path
+func (p *Service) FullRegistry(ps ...string) string {
+	p.init()
+
+	ss := []string{ReplaceURL(p.Domain), ReplaceURL(p.Name), ReplaceURL(p.Version)}
+
+	for _, s := range ps {
+		ss = append(ss, ReplaceURL(s))
+	}
+
+	return fmt.Sprintf("%s%s", registry, strings.Join(ss, "/"))
 }
 
 // ParseService parse a string to base service

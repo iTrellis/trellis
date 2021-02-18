@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package grpc;
+
+option go_package = "github.com/iTrellis/trellis/server/grpc;grpc";
+
+import "message.proto";
+
+// Client is the micro client interface
+service Client {
+	// Call allows a single request to be made
+	rpc Call(message.Request) returns (message.Response) {};
+	// Stream is a bidirectional stream
+	rpc Stream(stream message.Request) returns (stream message.Response) {};
+	// Publish publishes a payload and returns an empty payload
+	rpc Publish(message.Payload) returns (message.Payload) {};
+}

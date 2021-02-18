@@ -20,9 +20,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/iTrellis/trellis/examples/ping_pong/components"
-
 	"github.com/iTrellis/trellis/cmd"
+	"github.com/iTrellis/trellis/examples/components"
 	"github.com/iTrellis/trellis/service"
 )
 
@@ -33,10 +32,11 @@ func main() {
 	}
 
 	// Explicit to register component function
-	c.RegisterComponentFunc(&service.Service{Name: "component_ping", Version: "v1"}, components.NewPing)
+	c.GetRoutesManager().CompManager().RegisterComponentFunc(
+		&service.Service{Name: "component_ping", Version: "v1"},
+		components.NewPing)
 
-	// // implicit in pong.go
-	// c.RegisterComponentFunc(&service.Service{Name: "component_pong", Version: "v1"}, components.NewPong)
+	// implicit in pong.go
 
 	if err := c.Start(); err != nil {
 		panic(err)
@@ -44,13 +44,16 @@ func main() {
 
 	defer c.Stop()
 
-	cpt, err := c.GetComponent(&service.Service{Name: "component_ping", Version: "v1"})
+	cpt, err := c.GetRoutesManager().CompManager().GetComponent(&service.Service{Name: "component_ping", Version: "v1"})
 	if err != nil {
 		panic(err)
 	}
 
 	hf := cpt.Route("ping")
-	resp, err := hf(nil, nil)
+	if hf == nil {
+		panic("not found handler function")
+	}
+	resp, err := hf(nil)
 	if err != nil {
 		panic(err)
 	}

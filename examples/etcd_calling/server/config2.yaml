@@ -1,0 +1,24 @@
+project:
+  services:
+    -
+      name: component_pong
+      version: v1
+
+      registry:
+        type: 1
+        name: grpc_test
+        address: 127.0.0.1:8081
+        weight: 2
+        ttl: 15s
+        options:
+          heartbeat: 10s
+    -
+      name: trellis-grpcserver
+      version: v1
+  registries:
+    -
+      name: grpc_test
+      type: 1
+      address: ["127.0.0.1:2379"]
+      secure: false
+      timeout: 5s
