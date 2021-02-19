@@ -43,7 +43,7 @@ type Router interface {
 	RegisterRegistry(string, registry.Registry) error
 	DeregisterRegistry(string) error
 
-	RegisterService(string, *registry.Service, ...registry.RegisterOption) error
-	DeregisterService(string, *registry.Service, ...registry.DeregisterOption) error
+	RegisterService(string, *service.Service, ...registry.RegisterOption) error
+	DeregisterService(string, *service.Service, ...registry.DeregisterOption) error
 	WatchService(string, ...registry.WatchOption) error
 }

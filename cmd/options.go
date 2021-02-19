@@ -17,14 +17,26 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package cmd
 
+import (
+	"github.com/iTrellis/trellis/configure"
+)
+
 type Option func(*Options)
 
 type Options struct {
-	ConfigFile string
+	configFile string
+
+	config *configure.Configure
 }
 
 func ConfigFile(filepath string) Option {
 	return func(o *Options) {
-		o.ConfigFile = filepath
+		o.configFile = filepath
+	}
+}
+
+func WithConfig(c *configure.Configure) Option {
+	return func(o *Options) {
+		o.config = c
 	}
 }

@@ -19,7 +19,6 @@ package service
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/iTrellis/common/encryption/hash"
@@ -27,7 +26,7 @@ import (
 
 const (
 	defDomain = "trellis"
-	registry  = "/trellis/registry/"
+	registry  = "/trellis/registry"
 )
 
 func (p *Service) init() {
@@ -38,18 +37,27 @@ func (p *Service) init() {
 
 // ID gen service id
 func (p *Service) ID(ps ...string) string {
+	if p == nil {
+		return ""
+	}
 	p.init()
-	return hash.NewCRCIEEE().Sum(p.FullPath(ps...))
+	return hash.NewCRCIEEE().Sum(p.TrellisPath(ps...))
 }
 
-// FullName Service full name
-func (p *Service) FullName() string {
+// TrellisName service name
+func (p *Service) TrellisName() string {
+	if p == nil {
+		return ""
+	}
 	p.init()
-	return fmt.Sprintf("/%s/%s", ReplaceURL(p.Domain), ReplaceURL(p.Name))
+	return joinpath([]string{ReplaceURL(p.Domain), ReplaceURL(p.Name)})
 }
 
-// FullPath Service full path
-func (p *Service) FullPath(ps ...string) string {
+// TrellisPath Service full path
+func (p *Service) TrellisPath(ps ...string) string {
+	if p == nil {
+		return ""
+	}
 	p.init()
 
 	ss := []string{ReplaceURL(p.Domain), ReplaceURL(p.Name), ReplaceURL(p.Version)}
@@ -58,20 +66,28 @@ func (p *Service) FullPath(ps ...string) string {
 		ss = append(ss, ReplaceURL(s))
 	}
 
-	return fmt.Sprintf("/%s", strings.Join(ss, "/"))
+	return joinpath(ss)
 }
 
-// FullRegistry Service full registry path
-func (p *Service) FullRegistry(ps ...string) string {
+// FullRegistryPath Service full registry path
+func (p *Service) FullRegistryPath(ps ...string) string {
+	if p == nil {
+		return ""
+	}
+
 	p.init()
 
-	ss := []string{ReplaceURL(p.Domain), ReplaceURL(p.Name), ReplaceURL(p.Version)}
+	ss := []string{registry, ReplaceURL(p.Domain), ReplaceURL(p.Name), ReplaceURL(p.Version)}
 
 	for _, s := range ps {
 		ss = append(ss, ReplaceURL(s))
 	}
 
-	return fmt.Sprintf("%s%s", registry, strings.Join(ss, "/"))
+	return joinpath(ss)
+}
+
+func joinpath(ss []string) string {
+	return strings.Join(ss, "/")
 }
 
 // ParseService parse a string to base service

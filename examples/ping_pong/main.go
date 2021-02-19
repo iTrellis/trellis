@@ -32,7 +32,7 @@ func main() {
 	}
 
 	// Explicit to register component function
-	c.GetRoutesManager().CompManager().RegisterComponentFunc(
+	cmd.DefaultCompManager.RegisterComponentFunc(
 		&service.Service{Name: "component_ping", Version: "v1"},
 		components.NewPing)
 
@@ -44,7 +44,7 @@ func main() {
 
 	defer c.Stop()
 
-	cpt, err := c.GetRoutesManager().CompManager().GetComponent(&service.Service{Name: "component_ping", Version: "v1"})
+	cpt, err := cmd.DefaultCompManager.GetComponent(&service.Service{Name: "component_ping", Version: "v1"})
 	if err != nil {
 		panic(err)
 	}

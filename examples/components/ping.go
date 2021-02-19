@@ -26,21 +26,15 @@ import (
 )
 
 type ping struct {
-	alias string
-
 	opts component.Options
 }
 
-func NewPing(alias string, opts ...component.Option) (component.Component, error) {
-	c := &ping{alias: alias}
+func NewPing(opts ...component.Option) (component.Component, error) {
+	c := &ping{}
 	for _, o := range opts {
 		o(&c.opts)
 	}
 	return c, nil
-}
-
-func (p *ping) Alias() string {
-	return p.alias
 }
 
 func (p *ping) Route(topic string) component.Handler {

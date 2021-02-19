@@ -7,7 +7,7 @@ project:
     -
       name: grpc_test
       type: 1
-      address: ["127.0.0.1:2379"]
+      endpoints: ["127.0.0.1:2379"]
       secure: false
       watchers:
         -

@@ -16,7 +16,7 @@ func main() {
 
 	// api.RegistUseFuncs()
 	// Explicit to register component function
-	c.GetRoutesManager().CompManager().RegisterComponentFunc(
+	cmd.DefaultCompManager.RegisterComponentFunc(
 		&service.Service{Name: "component_ping", Version: "v1"},
 		components.NewPing)
 
@@ -24,7 +24,5 @@ func main() {
 		panic(err)
 	}
 
-	defer c.Stop()
-
-	c.Run()
+	c.BlockExit()
 }

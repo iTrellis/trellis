@@ -15,42 +15,55 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-package components
+package main
 
 import (
+	"fmt"
+	"log"
+
 	"github.com/iTrellis/trellis/cmd"
+	"github.com/iTrellis/trellis/configure"
 	"github.com/iTrellis/trellis/service"
 	"github.com/iTrellis/trellis/service/component"
-	"github.com/iTrellis/trellis/service/message"
 )
 
+var s = service.Service{Name: "simple_script", Version: "v1"}
+
 func init() {
-	cmd.RegisterComponentFunc(&service.Service{Name: "component_pong", Version: "v1"}, NewPong)
+	cmd.DefaultCompManager.RegisterComponentFunc(&s, newSingleScript)
 }
 
-type pong struct{}
+type singleScript struct{}
 
-// NewPong pong constrator
-func NewPong(opts ...component.Option) (component.Component, error) {
-	return &pong{}, nil
+func newSingleScript(...component.Option) (component.Component, error) {
+	return &singleScript{}, nil
 }
 
-func (p *pong) Route(topic string) component.Handler {
-	switch topic {
-	case "ping":
-		return func(_ message.Message) (interface{}, error) {
-			return "pong", nil
-		}
+func (p *singleScript) Start() error {
+	fmt.Println("do something")
+	return nil
+}
+
+func (p *singleScript) Stop() error {
+	fmt.Println("stop something")
+	return nil
+}
+
+func (p *singleScript) Route(topic string) component.Handler {
+	return nil
+}
+
+func main() {
+
+	cs := &configure.Service{Service: s}
+	c := cmd.New(cmd.WithConfig(&configure.Configure{Project: configure.Project{
+		Services: []*configure.Service{cs},
+	}}))
+
+	if err := c.Start(); err != nil {
+		log.Fatalln(err)
 	}
-	return nil
-}
 
-func (p *pong) Start() error {
-	println("component pong started")
-	return nil
-}
+	c.Stop()
 
-func (p *pong) Stop() error {
-	println("component pong stopped")
-	return nil
 }

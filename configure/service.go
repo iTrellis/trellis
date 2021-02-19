@@ -20,55 +20,50 @@ package configure
 import (
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/iTrellis/config"
-	"github.com/iTrellis/node"
 	"github.com/iTrellis/trellis/service"
 )
 
+// Service service
 type Service struct {
-	Alias string `json:"alias" yaml:"alias"`
-
 	service.Service `json:",inline" yaml:",inline"`
-
-	Protocol service.Protocol `json:"protocol" yaml:"protocol"`
 
 	Options config.Options `json:"options" yaml:"options"`
 
 	Registry *ServiceRegistry `json:"registry" yaml:"registry"`
 }
 
+// ServiceRegistry service's registry infor
 type ServiceRegistry struct {
+	// registry name
 	Name string `json:"name" yaml:"name"`
+	// node weight
+	Weight uint32 `json:"weight" yaml:"weight"`
+	// protocol between two servers
+	Protocol service.Protocol `json:"protocol" yaml:"protocol"`
 
-	TTL        string        `json:"ttl" yaml:"ttl"`
-	Heartbeat  time.Duration `json:"heartbeat" yaml:"heartbeat"`
-	RetryTimes uint32        `json:"retry_times" yaml:"retry_times"`
-
-	Address string `json:"address" yaml:"address"`
-	Weight  uint32 `json:"weight" yaml:"weight"`
-
-	Options config.Options `json:"options" yaml:"options"`
+	TTL       time.Duration `json:"ttl" yaml:"ttl"`
+	Heartbeat time.Duration `json:"heartbeat" yaml:"heartbeat"`
 }
 
-func (p *Service) ToNode() *node.Node {
-	n := &node.Node{}
+// func (p *Service) ToNode(*Registry) *node.Node {
+// 	n := &node.Node{
+// 		Metadata: p.Options,
+// 	}
 
-	if p.Registry == nil {
-		n.ID = p.ID(uuid.New().String())
-		n.Weight = 1
-	} else {
-		n.ID = p.ID(p.Registry.Address)
-		n.Value = p.Registry.Address
-		n.Weight = p.Registry.Weight
-	}
-	n.Metadata = p.Options
+// 	if n.Metadata == nil {
+// 		n.Metadata = config.Options{}
+// 	}
 
-	if n.Metadata == nil {
-		n.Metadata = config.Options{}
-	}
+// 	if p.Registry == nil {
+// 		n.ID = p.ID("127.0.0.1")
+// 		n.Weight = 1
+// 		n.Metadata["protocol"] = p.Registry.Protocol
+// 	} else {
+// 		n.ID = p.ID(p.Registry.Address)
+// 		n.Value = p.Registry.Address
+// 		n.Weight = p.Registry.Weight
+// 	}
 
-	n.Metadata["protocol"] = p.Protocol
-
-	return n
-}
+// 	return n
+// }

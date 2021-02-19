@@ -29,7 +29,6 @@ import (
 var (
 	// DefaultNewRegistryFuncs new registry functions
 	DefaultNewRegistryFuncs = map[service.RegisterType]registry.NewRegistryFunc{
-		// sd.RegistryMDNS:
 		service.RegisterType_memory: memory.NewRegistry,
 		service.RegisterType_etcd:   etcd.NewRegistry,
 	}

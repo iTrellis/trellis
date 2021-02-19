@@ -25,7 +25,7 @@ import (
 )
 
 // NewComponentFunc 服务对象生成函数申明
-type NewComponentFunc func(alias string, opts ...Option) (Component, error)
+type NewComponentFunc func(opts ...Option) (Component, error)
 
 // Handler handle the message function
 type Handler func(message.Message) (interface{}, error)
@@ -35,8 +35,6 @@ type Middleware func(Handler) Handler
 
 // Component Component
 type Component interface {
-	Alias() string
-
 	service.LifeCycle
 
 	Route(topic string) Handler
@@ -47,6 +45,7 @@ type Describe struct {
 	Name         string
 	RegisterFunc string
 	Component    Component
+	Started      bool
 }
 
 // Option 处理参数函数

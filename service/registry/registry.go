@@ -17,6 +17,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package registry
 
+import "github.com/iTrellis/trellis/service"
+
 // NewRegistryFunc new registry function
 type NewRegistryFunc func(...Option) (Registry, error)
 
@@ -37,7 +39,7 @@ type Registry interface {
 
 // ProcessService Process register service
 type ProcessService interface {
-	Register(*Service, ...RegisterOption) error
-	Deregister(*Service, ...DeregisterOption) error
+	Register(*service.Service, ...RegisterOption) error
+	Deregister(*service.Service, ...DeregisterOption) error
 	Watch(...WatchOption) (Watcher, error)
 }

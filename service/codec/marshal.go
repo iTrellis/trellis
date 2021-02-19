@@ -16,14 +16,3 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 package codec
-
-// NewCodec Takes in a connection/buffer and returns a new Codec
-type NewCodec func() Codec
-
-// Codec is a simple encoding interface used for the broker/transport
-// where headers are not supported by the underlying implementation.
-type Codec interface {
-	Marshal(interface{}) ([]byte, error)
-	Unmarshal([]byte, interface{}) error
-	String() string
-}

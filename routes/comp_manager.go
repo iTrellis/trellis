@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"runtime"
 	"sync"
 
 	"github.com/iTrellis/common/logger"
@@ -37,7 +38,8 @@ type compManager struct {
 
 	newComponentFuncs map[string]component.NewComponentFunc
 
-	componentNames []string
+	componentNames    []string
+	startedComponents map[string]bool
 }
 
 // NewCompManager new default component manager
@@ -46,13 +48,14 @@ func NewCompManager() component.Manager {
 
 		components:        make(map[string]component.Component),
 		newComponentFuncs: make(map[string]component.NewComponentFunc),
+		startedComponents: make(map[string]bool),
 	}
 }
 
 // RegisterComponent regist component function
-func (p *compManager) RegisterComponentFunc(service *service.Service, fn component.NewComponentFunc) {
+func (p *compManager) RegisterComponentFunc(s *service.Service, fn component.NewComponentFunc) {
 
-	if service == nil || len(service.Name) == 0 {
+	if s.GetName() == "" {
 		panic("component name is empty")
 	}
 
@@ -61,56 +64,63 @@ func (p *compManager) RegisterComponentFunc(service *service.Service, fn compone
 	}
 
 	p.RLock()
-	_, exist := p.newComponentFuncs[service.FullPath()]
+	_, exist := p.newComponentFuncs[s.TrellisPath()]
 	p.RUnlock()
 	if exist {
-		panic(fmt.Sprintf("component already registered: %s", service.FullPath()))
+		panic(fmt.Sprintf("component already registered: %s", s.TrellisPath()))
 	}
 
 	p.Lock()
-	p.newComponentFuncs[service.FullPath()] = fn
-	p.componentNames = append(p.componentNames, service.FullPath())
+	p.newComponentFuncs[s.TrellisPath()] = fn
+	p.componentNames = append(p.componentNames, s.TrellisPath())
 	p.Unlock()
 }
 
 // ListComponents get components
 func (p *compManager) ListComponents() []component.Describe {
 
-	var desc []component.Describe
+	var descs []component.Describe
 
 	for _, name := range p.componentNames {
 		p.RLock()
 		cpt := p.components[name]
+		started := p.startedComponents[name]
 		p.RUnlock()
 
-		desc = append(desc, component.Describe{
-			Name: name,
-			// RegisterFunc: runtime.FuncForPC(reflect.ValueOf(cpt).Pointer()).Name(),
-			RegisterFunc: reflect.ValueOf(cpt).String(),
-			Component:    cpt,
-		})
+		desc := component.Describe{
+			Name:    name,
+			Started: started,
+		}
+
+		if cpt != nil {
+			desc.RegisterFunc = runtime.FuncForPC(reflect.ValueOf(cpt).Pointer()).Name()
+			desc.Component = cpt
+		}
+
+		descs = append(descs, desc)
 	}
 
-	return desc
+	return descs
 }
 
 // NewComponent new component
-func (p *compManager) NewComponent(service *service.Service, alias string, opts ...component.Option) (
+func (p *compManager) NewComponent(s *service.Service, opts ...component.Option) (
 	component.Component, error) {
 	p.RLock()
-	fn, ok := p.newComponentFuncs[service.FullPath()]
+	fn, ok := p.newComponentFuncs[s.TrellisPath()]
 	p.RUnlock()
 	if !ok {
-		return nil, fmt.Errorf("component driver '%s' not exist", service.FullPath())
+		return nil, fmt.Errorf("component driver '%s' not exist", s.TrellisPath())
 	}
 
-	cpt, err := fn(alias, opts...)
+	cpt, err := fn(opts...)
 	if err != nil {
 		return nil, err
 	}
 
 	p.Lock()
-	p.components[service.FullPath()] = cpt
+	p.components[s.TrellisPath()] = cpt
+	p.startedComponents[s.TrellisPath()] = true
 	p.Unlock()
 
 	return cpt, nil
@@ -119,7 +129,7 @@ func (p *compManager) NewComponent(service *service.Service, alias string, opts 
 // GetComponent get component
 func (p *compManager) GetComponent(s *service.Service) (cpt component.Component, err error) {
 	p.RLock()
-	cpt, ok := p.components[s.FullPath()]
+	cpt, ok := p.components[s.TrellisPath()]
 	p.RUnlock()
 	if !ok {
 		return nil, errors.New("component is not exists")

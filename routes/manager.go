@@ -1,9 +1,27 @@
+/*
+Copyright © 2020 Henry Huang <hhh@rutcode.com>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+
 package routes
 
 import (
 	"context"
 	"fmt"
 
+	"github.com/iTrellis/common/logger"
 	"github.com/iTrellis/node"
 	"github.com/iTrellis/trellis/service"
 	"github.com/iTrellis/trellis/service/client/grpc"
@@ -27,6 +45,8 @@ type manager struct {
 	// CompManager component.Manager
 	router  router.Router
 	manager component.Manager
+
+	logger logger.Logger
 }
 
 func (p *manager) Init(opts ...Option) {
@@ -46,6 +66,11 @@ func (p *manager) Init(opts ...Option) {
 	if p.router == nil {
 		p.router = NewRoutes(options.logger)
 	}
+
+	if p.manager == nil {
+		p.manager = NewCompManager()
+	}
+	p.logger = options.logger.WithPrefix("routes")
 }
 
 func (p *manager) CallComponent(ctx context.Context, msg message.Message) (interface{}, error) {
@@ -67,7 +92,7 @@ func (p *manager) CallServer(ctx context.Context, msg message.Message) (interfac
 		return nil, err
 	}
 
-	nm, err := node.NewWithNodes(node.NodeTypeConsistent, msg.Service().FullRegistry(), nodes)
+	nm, err := node.NewWithNodes(node.NodeTypeConsistent, msg.Service().TrellisPath(), nodes)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +127,7 @@ func (p *manager) CallServer(ctx context.Context, msg message.Message) (interfac
 func (p *manager) Start() error {
 
 	for _, cpt := range p.manager.ListComponents() {
-		fmt.Println(cpt.Name, cpt.Component)
+		p.logger.Info("start_component", cpt)
 		if err := cpt.Component.Start(); err != nil {
 			return err
 		}

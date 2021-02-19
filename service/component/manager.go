@@ -25,6 +25,6 @@ import (
 type Manager interface {
 	RegisterComponentFunc(service *service.Service, fn NewComponentFunc)
 	ListComponents() []Describe
-	NewComponent(service *service.Service, alias string, opts ...Option) (Component, error)
+	NewComponent(service *service.Service, opts ...Option) (Component, error)
 	GetComponent(*service.Service) (Component, error)
 }

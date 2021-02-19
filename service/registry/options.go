@@ -32,10 +32,14 @@ type Option func(*Options)
 
 // Options new registry Options
 type Options struct {
-	Addrs     []string
+	Endpoints []string
 	Timeout   time.Duration
 	Secure    bool
 	TLSConfig *tls.Config
+
+	ServerAddr string
+	RetryTimes uint32
+
 	// Other options for implementations of the interface
 	// can be stored in a context
 	Context context.Context
@@ -43,9 +47,9 @@ type Options struct {
 	Logger logger.Logger
 }
 
-func Adds(addrs []string) Option {
+func Endpoints(endpoints []string) Option {
 	return func(o *Options) {
-		o.Addrs = addrs
+		o.Endpoints = endpoints
 	}
 }
 
@@ -67,6 +71,12 @@ func TLSConfig(tlsConfig *tls.Config) Option {
 	}
 }
 
+func ServerAddr(addr string) Option {
+	return func(o *Options) {
+		o.ServerAddr = addr
+	}
+}
+
 func Context(ctx context.Context) Option {
 	return func(o *Options) {
 		o.Context = ctx
@@ -79,8 +89,17 @@ func Logger(l logger.Logger) Option {
 	}
 }
 
-// RegisterOption options' of registing service functions
-type RegisterOption func(*RegisterOptions)
+func RetryTimes(rTimes uint32) Option {
+	return func(o *Options) {
+		o.RetryTimes = rTimes
+	}
+}
+
+func RegisterWeight(w uint32) RegisterOption {
+	return func(o *RegisterOptions) {
+		o.Weight = w
+	}
+}
 
 func RegisterTTL(ttl time.Duration) RegisterOption {
 	return func(o *RegisterOptions) {
@@ -94,19 +113,23 @@ func RegisterHeartbeat(hb time.Duration) RegisterOption {
 	}
 }
 
-func RegisterRetryTimes(rTimes uint32) RegisterOption {
-	return func(o *RegisterOptions) {
-		o.RetryTimes = rTimes
-	}
-}
+// RegisterOption options' of registing service functions
+type RegisterOption func(*RegisterOptions)
 
 // RegisterOptions regist service Options
 type RegisterOptions struct {
-	TTL time.Duration
-
+	TTL       time.Duration
 	Heartbeat time.Duration
+	Weight    uint32
+}
 
-	RetryTimes uint32
+func (p *RegisterOptions) Check() {
+	if p.Heartbeat == 0 {
+		p.Heartbeat = 10 * time.Second
+	}
+	if p.Weight == 0 {
+		p.Weight = 1
+	}
 }
 
 // DeregisterOption options' of deregistering service functions

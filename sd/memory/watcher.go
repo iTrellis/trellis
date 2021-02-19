@@ -37,7 +37,7 @@ func (p *Watcher) Next() (*registry.Result, error) {
 		select {
 		case r := <-p.res:
 			if p.wo.Service.Name != "" &&
-				p.wo.Service.FullPath() != r.Service.Service.FullPath() {
+				p.wo.Service.FullRegistryPath() != r.Service.Service.FullRegistryPath() {
 				continue
 			}
 			return r, nil

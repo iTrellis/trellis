@@ -1,3 +1,20 @@
+/*
+Copyright © 2020 Henry Huang <hhh@rutcode.com>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+
 package etcd
 
 import (
@@ -12,6 +29,8 @@ import (
 
 	bsf "github.com/iTrellis/common/encryption/binary-formats"
 	"github.com/iTrellis/common/errors"
+	"github.com/iTrellis/common/logger"
+	"github.com/iTrellis/node"
 	"github.com/iTrellis/trellis/service"
 	"github.com/iTrellis/trellis/service/registry"
 
@@ -26,21 +45,22 @@ type etcdRegistry struct {
 	id      string
 	options registry.Options
 
-	// logger logger.Logger
-
 	sync.RWMutex
 
-	services map[string]register
-	leases   map[string]leases
-
-	workers map[string]workers
+	// map[registryFullPath]map[node.ID]id
+	services map[string]uint64
+	// map[registryFullPath]map[node.ID]leaseID
+	leases map[string]clientv3.LeaseID
+	// map[registryFullPath]map[node.ID]worker
+	workers map[string]*worker
 
 	client *clientv3.Client
+	logger logger.Logger
 }
 
-type register map[string]uint64
-type leases map[string]clientv3.LeaseID
-type workers map[string]*worker
+// type register map[string]uint64
+// type leases map[string]clientv3.LeaseID
+// type workers map[string]*worker
 
 // NewRegistry new etcd registry
 func NewRegistry(opts ...registry.Option) (registry.Registry, error) {
@@ -48,12 +68,9 @@ func NewRegistry(opts ...registry.Option) (registry.Registry, error) {
 	p := &etcdRegistry{
 		id: uuid.New().String(),
 
-		// map[registryFullPath]map[node.ID]id
-		services: make(map[string]register),
-		// map[registryFullPath]map[node.ID]leaseID
-		leases: make(map[string]leases),
-		// map[registryFullPath]map[node.ID]worker
-		workers: make(map[string]workers),
+		services: make(map[string]uint64),
+		leases:   make(map[string]clientv3.LeaseID),
+		workers:  make(map[string]*worker),
 	}
 
 	configure(p, opts...)
@@ -65,6 +82,10 @@ func NewRegistry(opts ...registry.Option) (registry.Registry, error) {
 func configure(e *etcdRegistry, opts ...registry.Option) error {
 	for _, o := range opts {
 		o(&e.options)
+	}
+
+	if e.options.Logger != nil {
+		e.logger = e.options.Logger.WithPrefix("etcd_register")
 	}
 
 	// setup the client
@@ -93,24 +114,24 @@ func newClient(e *etcdRegistry, opts ...registry.Option) (*clientv3.Client, erro
 		DialTimeout: 5 * time.Second,
 	}
 
-	var cAddrs []string
-	for _, address := range e.options.Addrs {
-		if len(address) == 0 {
+	var endpoints []string
+	for _, endpoint := range e.options.Endpoints {
+		if len(endpoints) == 0 {
 			continue
 		}
-		addr, port, err := net.SplitHostPort(address)
+		host, port, err := net.SplitHostPort(endpoint)
 		if ae, ok := err.(*net.AddrError); ok && ae.Err == "missing port in address" {
 			port = "2379"
-			addr = address
-			cAddrs = append(cAddrs, net.JoinHostPort(addr, port))
+			host = endpoint
+			endpoints = append(endpoints, net.JoinHostPort(host, port))
 		} else if err == nil {
-			cAddrs = append(cAddrs, net.JoinHostPort(addr, port))
+			endpoints = append(endpoints, net.JoinHostPort(host, port))
 		}
 	}
 
-	// if we got addrs then we'll update
-	if len(cAddrs) > 0 {
-		config.Endpoints = cAddrs
+	// if we got endpoints then we'll update
+	if len(endpoints) > 0 {
+		config.Endpoints = endpoints
 	}
 
 	if e.options.Timeout != 0 {
@@ -145,7 +166,7 @@ func newClient(e *etcdRegistry, opts ...registry.Option) (*clientv3.Client, erro
 		}
 	}
 
-	// e.logger.Info("etcd config", config)
+	e.logger.Info("etcd_client_config", config)
 
 	return clientv3.New(config)
 }
@@ -162,56 +183,56 @@ func (p *etcdRegistry) Options() registry.Options {
 	return p.options
 }
 
-func (p *etcdRegistry) Register(s *registry.Service, opts ...registry.RegisterOption) error {
-	if s.Node == nil {
-		return errors.New("Require node's infor")
+func (p *etcdRegistry) Register(s *service.Service, opts ...registry.RegisterOption) error {
+	if s.GetName() == "" {
+		return errors.New("service name not found")
 	}
 
 	var options registry.RegisterOptions
 	for _, o := range opts {
 		o(&options)
 	}
+	options.Check()
 
-	if options.Heartbeat == 0 {
-		options.Heartbeat = 10 * time.Second
-	}
+	p.options.Logger.Info("etcd_registry", "register_service", s, "options", options)
 
-	// p.logger.Debug("etcd_registry", "register_service", s.Service, "options", options)
+	fullRegPath := s.FullRegistryPath(p.options.ServerAddr)
 
 	p.RLock()
-	wors, ok := p.workers[s.Service.FullRegistry()]
+	_, ok := p.workers[fullRegPath]
 	p.RUnlock()
-
-	if !ok {
-		wors = make(workers)
-	}
-
-	nodePath := s.Service.FullRegistry(s.Node.Value)
-	for _, w := range wors {
-		if nodePath == w.fullpath || w.service.Node.ID == s.Node.ID {
-			// no need register again
-			return nil
-		}
+	if ok {
+		p.logger.Info("register_service", "service_isalready_exist", s, "full_registry_path", fullRegPath)
+		return nil
 	}
 
 	wer := &worker{
-		service:    s,
-		ticker:     time.NewTicker(options.Heartbeat),
-		fullpath:   nodePath,
-		stopSignal: make(chan bool),
-		options:    options,
+		service: &registry.Service{
+			Service: *s,
+			Node: &node.Node{
+				ID:     s.ID(p.options.ServerAddr),
+				Value:  p.options.ServerAddr,
+				Weight: options.Weight,
+			},
+		},
+		ticker:      time.NewTicker(options.Heartbeat),
+		fullRegPath: fullRegPath,
+		stopSignal:  make(chan bool, 1),
+		options:     options,
 	}
 
 	go func(wr *worker) {
 		var count uint32
 		for {
-			if err := p.registerNode(s, wr); err != nil {
-				if wr.options.RetryTimes == 0 {
+			if err := p.registerServiceNode(wr); err != nil {
+				if p.options.RetryTimes == 0 {
 					continue
 				}
-				if wr.options.RetryTimes <= count {
-					panic(fmt.Errorf("%s regist into etcd failed times above: %d, %v", wr.fullpath, count, err))
+				if p.options.RetryTimes <= count {
+					panic(fmt.Errorf("%s regist into etcd failed times above: %d, %v", wr.fullRegPath, count, err))
 				}
+				p.options.Logger.Warn("failed_and_retry_regsiter", "worker", wr, "err", err.Error(),
+					"retry_times", count, "max_retry_times", p.options.RetryTimes)
 				count++
 				continue
 			}
@@ -219,7 +240,6 @@ func (p *etcdRegistry) Register(s *registry.Service, opts ...registry.RegisterOp
 			count = 0
 			select {
 			case <-wr.stopSignal:
-				p.Deregister(s)
 				return
 			case <-wr.ticker.C:
 				// nothing to do
@@ -228,39 +248,29 @@ func (p *etcdRegistry) Register(s *registry.Service, opts ...registry.RegisterOp
 	}(wer)
 
 	p.Lock()
-	wors[s.Node.ID] = wer
-	p.workers[s.Service.FullRegistry()] = wors
+	p.workers[fullRegPath] = wer
 	p.Unlock()
 
 	return nil
 }
 
-func (p *etcdRegistry) registerNode(s *registry.Service, wr *worker) error {
-	if s == nil || s.Node == nil || s.Node.ID == "" || s.Node.Value == "" {
+func (p *etcdRegistry) registerServiceNode(wr *worker) error {
+	if wr == nil || wr.service == nil || wr.service.GetName() == "" ||
+		wr.service.Node == nil || wr.service.Node.ID == "" {
 		return errors.New("node should not be nil")
 	}
-	regFullpath := s.FullRegistry()
 
-	p.Lock()
-	// ensure the leases and registers are setup for this domain
-	if _, ok := p.leases[regFullpath]; !ok {
-		p.leases[regFullpath] = make(leases)
-	}
-	if _, ok := p.services[regFullpath]; !ok {
-		p.services[regFullpath] = make(register)
-	}
+	p.RLock()
+	leaseID, ok := p.leases[wr.fullRegPath]
+	p.RUnlock()
 
-	leaseID, ok := p.leases[regFullpath][s.Value]
-	p.Unlock()
+	p.logger.Debug("register_service_node", ok, wr)
 
-	// p.logger.Debug("register service node", ok, *s)
-
-	fullregistryPath := s.FullRegistry(s.Node.ID)
 	if !ok {
 		// minimum lease TTL is ttl-second
 		ctx, cancel := context.WithTimeout(context.Background(), p.options.Timeout)
 		defer cancel()
-		resp, err := p.client.Get(ctx, fullregistryPath, clientv3.WithSerializable())
+		resp, err := p.client.Get(ctx, wr.fullRegPath, clientv3.WithSerializable())
 		if err != nil {
 			return err
 		}
@@ -283,8 +293,8 @@ func (p *etcdRegistry) registerNode(s *registry.Service, wr *worker) error {
 
 			// save the info
 			p.Lock()
-			p.leases[regFullpath][s.Node.ID] = leaseID
-			p.services[regFullpath][s.Node.ID] = h
+			p.leases[wr.fullRegPath] = leaseID
+			p.services[wr.fullRegPath] = h
 			p.Unlock()
 
 			break
@@ -303,14 +313,14 @@ func (p *etcdRegistry) registerNode(s *registry.Service, wr *worker) error {
 	}
 
 	// create hash of service; uint64
-	h, err := hashstructure.Hash(s.Node, hashstructure.FormatV2, nil)
+	h, err := hashstructure.Hash(wr.service, hashstructure.FormatV2, nil)
 	if err != nil {
 		return err
 	}
 
 	// get existing hash for the service node
 	p.RLock()
-	v, ok := p.services[regFullpath][s.Node.ID]
+	v, ok := p.services[wr.fullRegPath]
 	p.RUnlock()
 
 	if ok && v == h && !leaseNotFound {
@@ -333,58 +343,39 @@ func (p *etcdRegistry) registerNode(s *registry.Service, wr *worker) error {
 		putOpts = append(putOpts, clientv3.WithLease(lgr.ID))
 	}
 
-	if _, err = p.client.Put(ctx, fullregistryPath, encode(s), putOpts...); err != nil {
+	if _, err = p.client.Put(ctx, wr.fullRegPath, encode(wr.service), putOpts...); err != nil {
 		return err
 	}
 
 	p.Lock()
 	// save our hash of the service
-	p.services[regFullpath][s.Node.ID] = h
+	p.services[wr.fullRegPath] = h
 	// save our leaseID of the service
 	if lgr != nil {
-		p.leases[regFullpath][s.Node.ID] = lgr.ID
+		p.leases[wr.fullRegPath] = lgr.ID
 	}
 	p.Unlock()
 
 	return nil
 }
 
-func (p *etcdRegistry) Deregister(s *registry.Service, opts ...registry.DeregisterOption) error {
-	if s == nil || s.Node == nil || s.Node.ID == "" {
-		return errors.New("node should not be nil")
+func (p *etcdRegistry) Deregister(s *service.Service, opts ...registry.DeregisterOption) error {
+	if s.GetName() == "" {
+		return errors.New("service name not found")
 	}
 
-	regServicePath := s.FullRegistry()
+	fullRegPath := s.FullRegistryPath(p.options.ServerAddr)
+
+	p.RLock()
+	worker, ok := p.workers[fullRegPath]
+	p.RUnlock()
+	if !ok {
+		return nil
+	}
 
 	p.Lock()
-	// delete our hash of the service
-	nodes, ok := p.services[regServicePath]
-	if ok {
-		delete(nodes, s.Node.ID)
-		p.services[regServicePath] = nodes
-	}
-
-	// delete our lease of the service
-	leases, ok := p.leases[regServicePath]
-	if ok {
-		delete(leases, s.Node.ID)
-		p.leases[regServicePath] = leases
-	}
-
-	workers, ok := p.workers[regServicePath]
-	if ok {
-		delete(workers, s.Node.ID)
-	}
-
-	p.Unlock()
-
-	ctx, cancel := context.WithTimeout(context.Background(), p.options.Timeout)
-	defer cancel()
-	if _, err := p.client.Delete(ctx, s.FullRegistry(s.Node.ID)); err != nil {
-		return err
-	}
-
-	return nil
+	defer p.Unlock()
+	return p.stopWorker(worker)
 }
 
 func (p *etcdRegistry) String() string {
@@ -393,16 +384,10 @@ func (p *etcdRegistry) String() string {
 
 func (p *etcdRegistry) Stop() error {
 	p.Lock()
-	p.Unlock()
-	for _, workers := range p.workers {
-		for _, w := range workers {
-			w.stopSignal <- true
-
-			ctx, cancel := context.WithTimeout(context.Background(), p.options.Timeout)
-			defer cancel()
-			if _, err := p.client.Delete(ctx, w.service.FullRegistry(w.service.Node.ID)); err != nil {
-				return err
-			}
+	defer p.Unlock()
+	for _, w := range p.workers {
+		if err := p.stopWorker(w); err != nil {
+			return err
 		}
 	}
 
@@ -411,6 +396,22 @@ func (p *etcdRegistry) Stop() error {
 	}
 
 	return nil
+}
+
+func (p *etcdRegistry) stopWorker(w *worker) error {
+
+	w.stopSignal <- true
+	close(w.stopSignal)
+
+	delete(p.services, w.fullRegPath)
+	delete(p.leases, w.fullRegPath)
+	delete(p.workers, w.fullRegPath)
+
+	ctx, cancel := context.WithTimeout(context.Background(), p.options.Timeout)
+	defer cancel()
+	_, err := p.client.Delete(ctx, w.fullRegPath)
+
+	return err
 }
 
 func (p *etcdRegistry) Watch(opts ...registry.WatchOption) (registry.Watcher, error) {

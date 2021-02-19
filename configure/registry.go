@@ -24,13 +24,17 @@ import (
 	"github.com/iTrellis/trellis/service"
 )
 
+// Registry registry
 type Registry struct {
 	Name string               `json:"name" yaml:"name"`
 	Type service.RegisterType `json:"type" yaml:"type"`
 
-	Address []string      `json:"address" yaml:"address"`
-	Secure  bool          `json:"secure" yaml:"secure"`
-	Timeout time.Duration `json:"timeout" yaml:"timeout"`
+	Endpoints []string      `json:"endpoint" yaml:"endpoint"`
+	Secure    bool          `json:"secure" yaml:"secure"`
+	Timeout   time.Duration `json:"timeout" yaml:"timeout"`
+
+	ServerAddr string `json:"server_addr" yaml:"server_addr"`
+	RetryTimes uint32 `json:"retry_times" yaml:"retry_times"`
 
 	Watchers []Watcher `json:"watchers" yaml:"watchers"`
 }

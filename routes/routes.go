@@ -1,3 +1,20 @@
+/*
+Copyright © 2020 Henry Huang <hhh@rutcode.com>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+
 package routes
 
 import (
@@ -43,21 +60,6 @@ func NewRoutes(logger logger.Logger) router.Router {
 	}
 }
 
-// func (p *routes) Call(ctx context.Context, msg message.Message) (interface{}, error) {
-// 	if msg.Service() == nil {
-// 		return nil, fmt.Errorf("serive is nil")
-// 	}
-
-// 	mapNodes := p.serviceNodes[msg.Service().FullRegistry()]
-
-// 	var nodes []*node.Node
-// 	for _, v := range mapNodes {
-// 		nodes = append(nodes, v)
-// 	}
-
-// 	return nodes, nil
-// }
-
 func (p *routes) GetServiceNodes(opts ...router.ReadOption) ([]*node.Node, error) {
 	options := router.ReadOptions{}
 
@@ -68,7 +70,7 @@ func (p *routes) GetServiceNodes(opts ...router.ReadOption) ([]*node.Node, error
 		return nil, fmt.Errorf("serive is nil")
 	}
 
-	mapNodes := p.serviceNodes[options.Service.FullPath()]
+	mapNodes := p.serviceNodes[options.Service.FullRegistryPath()]
 
 	var nodes []*node.Node
 	for _, v := range mapNodes {
@@ -100,23 +102,25 @@ func (p *routes) DeregisterRegistry(name string) error {
 		p.RUnlock()
 		return errors.New("not found registry")
 	}
-	watchers := p.watchers[name]
+	watchers, ok := p.watchers[name]
 	p.RUnlock()
 
 	p.Lock()
 	defer p.Unlock()
 
-	for _, w := range watchers {
-		w.Stop()
-	}
-
 	delete(p.watchers, name)
 	delete(p.registries, name)
+	if ok {
 
+		for _, w := range watchers {
+			w.Stop()
+		}
+
+	}
 	return nil
 }
 
-func (p *routes) DeregisterService(name string, s *registry.Service, opts ...registry.DeregisterOption) error {
+func (p *routes) DeregisterService(name string, s *service.Service, opts ...registry.DeregisterOption) error {
 	p.Lock()
 	defer p.Unlock()
 
@@ -125,12 +129,12 @@ func (p *routes) DeregisterService(name string, s *registry.Service, opts ...reg
 		return errors.New("not found registry")
 	}
 
-	delete(p.serviceNodes, s.FullPath())
+	delete(p.serviceNodes, s.FullRegistryPath())
 
 	return reg.Deregister(s, opts...)
 }
 
-func (p *routes) RegisterService(name string, s *registry.Service, opts ...registry.RegisterOption) error {
+func (p *routes) RegisterService(name string, s *service.Service, opts ...registry.RegisterOption) error {
 	p.Lock()
 	defer p.Unlock()
 
@@ -159,45 +163,36 @@ func (p *routes) WatchService(name string, opts ...registry.WatchOption) error {
 	p.watchers[name] = append(p.watchers[name], w)
 	p.Unlock()
 
-	go func() {
-		for {
-			result, err := w.Next()
-			if err != nil {
-				p.logger.Warn("failed_get_next_node", err)
-				continue
-			}
-
-			if result.Service == nil {
-				continue
-			}
-
-			p.RLock()
-			sNodes, ok := p.serviceNodes[result.Service.FullPath()]
-			p.RUnlock()
-			if !ok {
-				sNodes = make(serviceNodes)
-			}
-			p.logger.Debugf("watch nodes: %+v, %+v\n", *result, *result.Service.Node)
-
-			switch result.Type {
-			case service.EventType_create, service.EventType_update:
-				// for _, node := range result.Service.Nodes {
-				// 	sNodes[node.ID] = node
-				// }
-				sNodes[result.Service.Node.ID] = result.Service.Node
-			case service.EventType_delete:
-				// for _, node := range result.Service.Nodes {
-				// 	delete(sNodes, node.ID)
-				// }
-				delete(sNodes, result.Service.Node.ID)
-			}
-
-			p.Lock()
-			p.serviceNodes[result.Service.FullPath()] = sNodes
-			p.Unlock()
+	for {
+		result, err := w.Next()
+		if err != nil {
+			p.logger.Warn("failed_get_next_node", err)
+			return err
 		}
-	}()
-	return nil
+
+		if result.Service == nil {
+			continue
+		}
+
+		p.RLock()
+		sNodes, ok := p.serviceNodes[result.Service.FullRegistryPath()]
+		p.RUnlock()
+		if !ok {
+			sNodes = make(serviceNodes)
+		}
+		p.logger.Debugf("watch nodes: %+v, %+v\n", *result, *result.Service.Node)
+
+		switch result.Type {
+		case service.EventType_create, service.EventType_update:
+			sNodes[result.Service.Node.ID] = result.Service.Node
+		case service.EventType_delete:
+			delete(sNodes, result.Service.Node.ID)
+		}
+
+		p.Lock()
+		p.serviceNodes[result.Service.FullRegistryPath()] = sNodes
+		p.Unlock()
+	}
 }
 
 // Start running router
