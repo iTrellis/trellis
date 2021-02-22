@@ -10,8 +10,12 @@ project:
             name: trellis-postapi
             version: v1
             options:
+                http:
+                    postapi: "/v1"
+                    address: ":8080"
                 gin_mode: debug
                 apis:
+                    type: file ## default file | mysql
                     file:
                         trellis-test:
                             api: trellis.ping

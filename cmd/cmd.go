@@ -26,7 +26,6 @@ import (
 	"syscall"
 
 	"github.com/iTrellis/common/builder"
-	"github.com/iTrellis/common/logger"
 	"github.com/iTrellis/config"
 	"github.com/iTrellis/trellis/configure"
 	"github.com/iTrellis/trellis/routes"
@@ -50,7 +49,7 @@ type Cmd interface {
 
 	service.LifeCycle
 
-	BlockExit()
+	BlockRun() error
 }
 
 type cmd struct {
@@ -61,10 +60,6 @@ type cmd struct {
 	config configure.Configure
 
 	routesManager routes.Manager
-
-	logger logger.Logger
-
-	writers []logger.Writer
 }
 
 func (p *cmd) Options() Options {
@@ -86,7 +81,7 @@ func (p *cmd) Start() error {
 			registry.Endpoints(regConfig.Endpoints),
 			registry.Timeout(regConfig.Timeout),
 			registry.Context(context.Background()),
-			registry.Logger(p.logger),
+			// registry.Logger(p.logger),
 		)
 
 		reg, err := fn(opts...)
@@ -111,7 +106,7 @@ func (p *cmd) Start() error {
 
 		if _, err := p.routesManager.CompManager().NewComponent(
 			&serviceConf.Service,
-			component.Logger(p.logger),
+			// component.Logger(p.logger),
 			component.Caller(p.routesManager),
 			component.Config(serviceConf.Options.ToConfig()),
 		); err != nil {
@@ -130,7 +125,7 @@ func (p *cmd) Start() error {
 			registry.RegisterHeartbeat(serviceConf.Registry.Heartbeat),
 		)
 
-		p.logger.Debug("regist service for registry", serviceConf)
+		// p.logger.Debug("regist service for registry", serviceConf)
 
 		if err := p.routesManager.Router().RegisterService(
 			serviceConf.Registry.Name,
@@ -167,9 +162,9 @@ func (p *cmd) Init(opts ...Option) error {
 }
 
 func (p *cmd) Stop() error {
-	defer p.logger.ClearSubscribers()
+	// defer p.logger.ClearSubscribers()
 	if err := p.routesManager.Stop(); err != nil {
-		p.logger.Error("trellis_routes_stop_failed", err)
+		// p.logger.Error("trellis_routes_stop_failed", err)
 		return err
 	}
 
@@ -189,11 +184,6 @@ func (p *cmd) BlockRun() error {
 		return err
 	}
 
-	p.BlockExit()
-	return nil
-}
-
-func (p *cmd) BlockExit() {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGTERM, syscall.SIGINT, syscall.SIGKILL)
 
@@ -201,7 +191,7 @@ func (p *cmd) BlockExit() {
 	case <-ch:
 	}
 
-	p.Stop()
+	return p.Stop()
 }
 
 func (p *cmd) App() *cli.App {
@@ -214,21 +204,13 @@ func New(opts ...Option) Cmd {
 
 	cmd.Init(opts...)
 
-	cmd.logger = logger.NewLogger()
+	// cmd.logger = logger.NewLogger()
 	cmd.app = cli.NewApp()
 
-	logW, err := logger.ChanWriter(cmd.logger, logger.ChanWiterLevel(logger.DebugLevel))
-	if err != nil {
-		panic(err)
-	}
-
 	cmd.routesManager = routes.NewManager(
-		routes.Logger(cmd.logger),
 		routes.CompManager(DefaultCompManager),
-		routes.WithRouter(routes.NewRoutes(cmd.logger)),
+		routes.WithRouter(routes.NewRoutes()),
 	)
-
-	cmd.writers = append(cmd.writers, logW)
 
 	cmd.app.Commands = cli.Commands{
 		&cli.Command{
@@ -248,14 +230,20 @@ func New(opts ...Option) Cmd {
 			},
 		},
 		&cli.Command{
-			Name:  "components",
-			Usage: "list of local components",
-			Action: func(ctx *cli.Context) error {
-				for _, cpt := range cmd.routesManager.CompManager().ListComponents() {
-					fmt.Printf("%s: %s, started: %t", cpt.Name, cpt.RegisterFunc, cpt.Started)
-				}
-				return nil
-			},
+			Name:  "list",
+			Usage: "list of local informations",
+			Subcommands: append([]*cli.Command{},
+				&cli.Command{
+					Name:  "components",
+					Usage: "list of local components",
+					Action: func(ctx *cli.Context) error {
+						for _, cpt := range cmd.routesManager.CompManager().ListComponents() {
+							fmt.Printf("components: %s - started: %t", cpt.Name, cpt.Started)
+						}
+						return nil
+					},
+				},
+			),
 		},
 		&cli.Command{
 			Name:  "run",

@@ -21,7 +21,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/iTrellis/common/logger"
 	"github.com/iTrellis/node"
 	"github.com/iTrellis/trellis/service"
 	"github.com/iTrellis/trellis/service/client/grpc"
@@ -41,12 +40,8 @@ func NewManager(opts ...Option) Manager {
 }
 
 type manager struct {
-	// Router      router.Router
-	// CompManager component.Manager
 	router  router.Router
 	manager component.Manager
-
-	logger logger.Logger
 }
 
 func (p *manager) Init(opts ...Option) {
@@ -64,13 +59,12 @@ func (p *manager) Init(opts ...Option) {
 	}
 
 	if p.router == nil {
-		p.router = NewRoutes(options.logger)
+		p.router = NewRoutes()
 	}
 
 	if p.manager == nil {
 		p.manager = NewCompManager()
 	}
-	p.logger = options.logger.WithPrefix("routes")
 }
 
 func (p *manager) CallComponent(ctx context.Context, msg message.Message) (interface{}, error) {
@@ -127,7 +121,6 @@ func (p *manager) CallServer(ctx context.Context, msg message.Message) (interfac
 func (p *manager) Start() error {
 
 	for _, cpt := range p.manager.ListComponents() {
-		p.logger.Info("start_component", cpt)
 		if err := cpt.Component.Start(); err != nil {
 			return err
 		}

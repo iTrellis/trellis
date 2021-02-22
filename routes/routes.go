@@ -22,7 +22,6 @@ import (
 	"sync"
 
 	"github.com/iTrellis/common/errors"
-	"github.com/iTrellis/common/logger"
 	"github.com/iTrellis/node"
 	"github.com/iTrellis/trellis/service"
 	"github.com/iTrellis/trellis/service/component"
@@ -33,7 +32,7 @@ import (
 type routes struct {
 	sync.RWMutex
 
-	logger logger.Logger
+	// logger logger.Logger
 
 	registries   map[string]registry.Registry
 	watchers     map[string][]registry.Watcher
@@ -47,9 +46,8 @@ type routes struct {
 type serviceNodes map[string]*node.Node
 
 // NewRoutes default routes
-func NewRoutes(logger logger.Logger) router.Router {
+func NewRoutes() router.Router {
 	return &routes{
-		logger: logger,
 
 		registries:   make(map[string]registry.Registry),
 		watchers:     make(map[string][]registry.Watcher),
@@ -166,7 +164,8 @@ func (p *routes) WatchService(name string, opts ...registry.WatchOption) error {
 	for {
 		result, err := w.Next()
 		if err != nil {
-			p.logger.Warn("failed_get_next_node", err)
+			// p.logger.Warn("failed_get_next_node", err)
+			// Todo
 			return err
 		}
 
@@ -180,7 +179,7 @@ func (p *routes) WatchService(name string, opts ...registry.WatchOption) error {
 		if !ok {
 			sNodes = make(serviceNodes)
 		}
-		p.logger.Debugf("watch nodes: %+v, %+v\n", *result, *result.Service.Node)
+		// p.logger.Debugf("watch nodes: %+v, %+v\n", *result, *result.Service.Node)
 
 		switch result.Type {
 		case service.EventType_create, service.EventType_update:

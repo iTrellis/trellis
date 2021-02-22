@@ -43,7 +43,7 @@ func RegistUseFuncs(name string, fn gin.HandlerFunc) error {
 
 func loadPprof(engine *gin.Engine, conf config.Config) {
 
-	if conf == nil {
+	if conf == nil || engine == nil {
 		return
 	}
 
@@ -56,6 +56,10 @@ func loadPprof(engine *gin.Engine, conf config.Config) {
 }
 
 func loadCors(engine *gin.Engine, conf config.Config) {
+
+	if engine == nil || conf == nil {
+		return
+	}
 
 	var corsConf cors.Config
 	if conf == nil {

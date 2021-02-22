@@ -8,6 +8,8 @@ import (
 	_ "github.com/iTrellis/trellis/server/api"
 )
 
+// curl -X 'POST' -H 'X-Api: trellis.ping' 'http://localhost:8080/v1'
+
 func main() {
 	c := cmd.New()
 	if err := c.Init(cmd.ConfigFile("config.yaml")); err != nil {

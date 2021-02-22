@@ -96,7 +96,6 @@ func (p *memory) Register(s *service.Service, ofs ...registry.RegisterOption) er
 			Value:  p.options.ServerAddr,
 		},
 	}
-	p.options.Logger.Debugf("Registry (memory) added new service: %+v", *regService)
 
 	nodes[s.GetVersion()] = regService
 
@@ -119,13 +118,11 @@ func (p *memory) Deregister(s *service.Service, ofs ...registry.DeregisterOption
 	}
 
 	if _, ok := nodes[s.GetVersion()]; ok {
-		p.options.Logger.Debugf("Registry (memory) removed service' version: %+v", s)
 		delete(p.services[serviceName], s.GetVersion())
 	}
 
 	regServices, ok := p.services[serviceName]
 	if ok {
-		p.options.Logger.Debugf("Registry (memory) removed service: %+v", s)
 		delete(p.services, serviceName)
 	}
 

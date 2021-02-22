@@ -33,8 +33,6 @@ var (
 		service.RegisterType_etcd:   etcd.NewRegistry,
 	}
 
-	// DefaultNewComponentFuncs = map[string]component.NewComponentFunc{}
-
 	// DefaultHiddenVersions hidden versions
 	DefaultHiddenVersions = []string{"0", "0.0", "0.0.0", "v0", "v0.0", "v0.0.0"}
 

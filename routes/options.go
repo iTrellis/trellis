@@ -18,7 +18,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package routes
 
 import (
-	"github.com/iTrellis/common/logger"
 	"github.com/iTrellis/trellis/service/component"
 	"github.com/iTrellis/trellis/service/router"
 )
@@ -26,15 +25,8 @@ import (
 type Option func(*Options)
 
 type Options struct {
-	logger  logger.Logger
 	router  router.Router
 	manager component.Manager
-}
-
-func Logger(l logger.Logger) Option {
-	return func(o *Options) {
-		o.logger = l
-	}
 }
 
 func WithRouter(r router.Router) Option {

@@ -24,7 +24,6 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/iTrellis/common/logger"
 	"github.com/iTrellis/trellis/service"
 	"github.com/iTrellis/trellis/service/component"
 )
@@ -32,7 +31,7 @@ import (
 type compManager struct {
 	sync.RWMutex
 
-	logger logger.Logger
+	// logger logger.Logger
 
 	components map[string]component.Component
 

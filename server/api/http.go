@@ -21,18 +21,21 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/iTrellis/trellis/cmd"
+	"github.com/iTrellis/trellis/internal/addr"
+	"github.com/iTrellis/trellis/server"
+	"github.com/iTrellis/trellis/service"
+	"github.com/iTrellis/trellis/service/component"
+	"github.com/iTrellis/trellis/service/message"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/iTrellis/common/errors"
 	"github.com/iTrellis/common/formats"
-	"github.com/iTrellis/trellis/cmd"
-	"github.com/iTrellis/trellis/internal/addr"
-	"github.com/iTrellis/trellis/service"
-	"github.com/iTrellis/trellis/service/component"
-	"github.com/iTrellis/trellis/service/message"
 	"github.com/iTrellis/xorm_ext"
 	"xorm.io/xorm"
 )
@@ -42,6 +45,21 @@ func init() {
 		&service.Service{Name: "trellis-postapi", Version: "v1"},
 		NewHTTPServer,
 	)
+}
+
+var handlers = make(map[string]*server.Handler)
+
+func RegistCustomHandlers(name, path, method string, fn gin.HandlerFunc) {
+
+	if fn == nil {
+		panic("handler function should not be nil")
+	}
+	_, ok := handlers[name]
+	if ok {
+		panic(fmt.Errorf("handler isalread exists"))
+	}
+
+	handlers[name] = &server.Handler{Name: name, URLPath: path, Method: strings.ToUpper(method), Func: fn}
 }
 
 type httpServer struct {
@@ -113,6 +131,7 @@ func (p *httpServer) init() error {
 			api := &API{
 				Name:           apiConf.GetString("api"),
 				Topic:          apiConf.GetString("topic"),
+				ServiceDomain:  apiConf.GetString("service_domain"),
 				ServiceName:    apiConf.GetString("service_name"),
 				ServiceVersion: apiConf.GetString("service_version"),
 			}
@@ -134,29 +153,34 @@ func (p *httpServer) init() error {
 		p.ticker = time.NewTicker(ticker)
 
 		go p.syncAPIs()
-
 	default:
 		return fmt.Errorf("unknown apis' config type")
 	}
 
 	httpConf := p.options.Config.GetValuesConfig("http")
 
-	urlPath := httpConf.GetString("path", "/")
-
 	engine := gin.New()
 
 	engine.Use(gin.Recovery())
+
+	loadCors(engine, httpConf.GetValuesConfig("cors"))
+	loadPprof(engine, httpConf.GetValuesConfig("pprof"))
 
 	for _, fn := range useFuncs {
 		engine.Use(fn)
 	}
 
+	for _, v := range handlers {
+		// p.options.Logger.Info("start_costomer_handler", v.Name, v.URLPath, v.Method)
+		engine.Handle(v.Method, v.URLPath, v.Func)
+	}
+
+	urlPath := httpConf.GetString("postapi")
+	if len(urlPath) != 0 {
+		engine.POST(urlPath, p.serve)
+	}
+
 	p.forwardHeaders = httpConf.GetStringList("forward.headers")
-
-	loadCors(engine, httpConf.GetValuesConfig("cors"))
-	loadPprof(engine, httpConf.GetValuesConfig("pprof"))
-
-	engine.POST(urlPath, p.serve)
 
 	p.srv = &http.Server{
 		Addr:    httpConf.GetString("address", ":8080"),
@@ -189,7 +213,7 @@ func (p *httpServer) Start() error {
 		}
 
 		if err != http.ErrServerClosed {
-			p.options.Logger.Error("http_server_closed", err.Error())
+			// p.options.Logger.Error("http_server_closed", err.Error())
 		}
 
 		ch <- err
@@ -226,14 +250,14 @@ func (p *httpServer) serve(gCtx *gin.Context) {
 		TraceIP: addr.ExternalIPs()[0],
 	}
 
-	p.options.Logger.Info("request", "trace_id", traceID, "api_name", apiName, "client_ip", clientIP)
+	// p.options.Logger.Info("request", "trace_id", traceID, "api_name", apiName, "client_ip", clientIP)
 	api, ok := p.getAPI(apiName)
 	if !ok {
 		r.Code = 11
 		r.Msg = "api not found"
 		r.Namespace = "trellis"
 		gCtx.JSON(http.StatusBadRequest, r)
-		p.options.Logger.Error("api_not_found", "trace_id", traceID, "api_name", apiName, "client_ip", clientIP)
+		// p.options.Logger.Error("api_not_found", "trace_id", traceID, "api_name", apiName, "client_ip", clientIP)
 		return
 	}
 
@@ -243,8 +267,7 @@ func (p *httpServer) serve(gCtx *gin.Context) {
 		r.Msg = fmt.Sprintf("bad request: %s", err.Error())
 		r.Namespace = "trellis"
 		gCtx.JSON(http.StatusBadRequest, r)
-		p.options.Logger.Error("get_raw_data", "trace_id", r.TraceID,
-			"api_name", apiName, "client_ip", clientIP, "err", err)
+		// p.options.Logger.Error("get_raw_data", "trace_id", r.TraceID, "api_name", apiName, "client_ip", clientIP, "err", err)
 		return
 	}
 
@@ -302,8 +325,7 @@ func (p *httpServer) serve(gCtx *gin.Context) {
 		r.Namespace = "trellis"
 	}
 
-	p.options.Logger.Error("call_server_failed", "trace_id", r.TraceID,
-		"api_name", apiName, "client_ip", clientIP, "err", r)
+	// p.options.Logger.Error("call_server_failed", "trace_id", r.TraceID, "api_name", apiName, "client_ip", clientIP, "err", r)
 	gCtx.JSON(200, r)
 }
 

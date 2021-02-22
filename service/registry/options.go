@@ -22,7 +22,6 @@ import (
 	"crypto/tls"
 	"time"
 
-	"github.com/iTrellis/common/logger"
 	"github.com/iTrellis/config"
 	"github.com/iTrellis/trellis/service"
 )
@@ -43,8 +42,6 @@ type Options struct {
 	// Other options for implementations of the interface
 	// can be stored in a context
 	Context context.Context
-
-	Logger logger.Logger
 }
 
 func Endpoints(endpoints []string) Option {
@@ -80,12 +77,6 @@ func ServerAddr(addr string) Option {
 func Context(ctx context.Context) Option {
 	return func(o *Options) {
 		o.Context = ctx
-	}
-}
-
-func Logger(l logger.Logger) Option {
-	return func(o *Options) {
-		o.Logger = l
 	}
 }
 

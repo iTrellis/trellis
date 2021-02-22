@@ -18,7 +18,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package component
 
 import (
-	"github.com/iTrellis/common/logger"
 	"github.com/iTrellis/config"
 	"github.com/iTrellis/trellis/service"
 	"github.com/iTrellis/trellis/service/message"
@@ -53,7 +52,7 @@ type Option func(*Options)
 
 // Options 参数对象
 type Options struct {
-	Logger logger.Logger
+	// Logger logger.Logger
 	Config config.Config
 	Caller message.Caller
 }
@@ -65,12 +64,12 @@ func Config(c config.Config) Option {
 	}
 }
 
-// Logger 日志记录
-func Logger(l logger.Logger) Option {
-	return func(p *Options) {
-		p.Logger = l
-	}
-}
+// // Logger 日志记录
+// func Logger(l logger.Logger) Option {
+// 	return func(p *Options) {
+// 		p.Logger = l
+// 	}
+// }
 
 // Caller remote service
 func Caller(c message.Caller) Option {

@@ -29,7 +29,6 @@ import (
 
 	bsf "github.com/iTrellis/common/encryption/binary-formats"
 	"github.com/iTrellis/common/errors"
-	"github.com/iTrellis/common/logger"
 	"github.com/iTrellis/node"
 	"github.com/iTrellis/trellis/service"
 	"github.com/iTrellis/trellis/service/registry"
@@ -55,7 +54,6 @@ type etcdRegistry struct {
 	workers map[string]*worker
 
 	client *clientv3.Client
-	logger logger.Logger
 }
 
 // type register map[string]uint64
@@ -82,10 +80,6 @@ func NewRegistry(opts ...registry.Option) (registry.Registry, error) {
 func configure(e *etcdRegistry, opts ...registry.Option) error {
 	for _, o := range opts {
 		o(&e.options)
-	}
-
-	if e.options.Logger != nil {
-		e.logger = e.options.Logger.WithPrefix("etcd_register")
 	}
 
 	// setup the client
@@ -166,8 +160,6 @@ func newClient(e *etcdRegistry, opts ...registry.Option) (*clientv3.Client, erro
 		}
 	}
 
-	e.logger.Info("etcd_client_config", config)
-
 	return clientv3.New(config)
 }
 
@@ -194,15 +186,12 @@ func (p *etcdRegistry) Register(s *service.Service, opts ...registry.RegisterOpt
 	}
 	options.Check()
 
-	p.options.Logger.Info("etcd_registry", "register_service", s, "options", options)
-
 	fullRegPath := s.FullRegistryPath(p.options.ServerAddr)
 
 	p.RLock()
 	_, ok := p.workers[fullRegPath]
 	p.RUnlock()
 	if ok {
-		p.logger.Info("register_service", "service_isalready_exist", s, "full_registry_path", fullRegPath)
 		return nil
 	}
 
@@ -231,8 +220,8 @@ func (p *etcdRegistry) Register(s *service.Service, opts ...registry.RegisterOpt
 				if p.options.RetryTimes <= count {
 					panic(fmt.Errorf("%s regist into etcd failed times above: %d, %v", wr.fullRegPath, count, err))
 				}
-				p.options.Logger.Warn("failed_and_retry_regsiter", "worker", wr, "err", err.Error(),
-					"retry_times", count, "max_retry_times", p.options.RetryTimes)
+				// p.options.Logger.Warn("failed_and_retry_regsiter", "worker", wr, "err", err.Error(),
+				// 	"retry_times", count, "max_retry_times", p.options.RetryTimes)
 				count++
 				continue
 			}
@@ -264,7 +253,7 @@ func (p *etcdRegistry) registerServiceNode(wr *worker) error {
 	leaseID, ok := p.leases[wr.fullRegPath]
 	p.RUnlock()
 
-	p.logger.Debug("register_service_node", ok, wr)
+	// p.logger.Debug("register_service_node", ok, wr)
 
 	if !ok {
 		// minimum lease TTL is ttl-second
