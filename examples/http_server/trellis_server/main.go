@@ -26,5 +26,5 @@ func main() {
 		panic(err)
 	}
 
-	c.BlockExit()
+	c.BlockRun()
 }
