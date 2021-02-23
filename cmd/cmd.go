@@ -26,6 +26,7 @@ import (
 	"syscall"
 
 	"github.com/iTrellis/common/builder"
+	"github.com/iTrellis/common/logger"
 	"github.com/iTrellis/config"
 	"github.com/iTrellis/trellis/configure"
 	"github.com/iTrellis/trellis/routes"
@@ -33,6 +34,7 @@ import (
 	"github.com/iTrellis/trellis/service/component"
 	"github.com/iTrellis/trellis/service/registry"
 	"github.com/iTrellis/trellis/version"
+	"github.com/sirupsen/logrus"
 
 	"github.com/urfave/cli/v2"
 )
@@ -60,6 +62,8 @@ type cmd struct {
 	config configure.Configure
 
 	routesManager routes.Manager
+
+	logger logger.Logger
 }
 
 func (p *cmd) Options() Options {
@@ -81,7 +85,7 @@ func (p *cmd) Start() error {
 			registry.Endpoints(regConfig.Endpoints),
 			registry.Timeout(regConfig.Timeout),
 			registry.Context(context.Background()),
-			// registry.Logger(p.logger),
+			registry.Logger(logger.WithPrefix(p.logger, "registry", regConfig.Name)),
 		)
 
 		reg, err := fn(opts...)
@@ -125,7 +129,7 @@ func (p *cmd) Start() error {
 			registry.RegisterHeartbeat(serviceConf.Registry.Heartbeat),
 		)
 
-		// p.logger.Debug("regist service for registry", serviceConf)
+		p.logger.Debug("regist service for registry", serviceConf)
 
 		if err := p.routesManager.Router().RegisterService(
 			serviceConf.Registry.Name,
@@ -139,7 +143,7 @@ func (p *cmd) Start() error {
 	return p.routesManager.Start()
 }
 
-func (p *cmd) Init(opts ...Option) error {
+func (p *cmd) Init(opts ...Option) (err error) {
 	for _, o := range opts {
 		o(&p.options)
 	}
@@ -158,13 +162,29 @@ func (p *cmd) Init(opts ...Option) error {
 		p.config = *p.options.config
 	}
 
-	return nil
+	if p.config.Project.Logger == nil {
+		p.logger = logger.NewStdLogger(logger.STDLevel(logger.InfoLevel), logger.STDWriter(os.Stderr))
+	} else {
+		switch p.config.Project.Logger.Type {
+		case "std":
+			p.logger = logger.NewStdLogger(logger.STDLevel(p.config.Project.Logger.Level), logger.STDWriter(os.Stderr))
+		case "file":
+			p.logger, err = logger.NewFileLogger()
+			if err != nil {
+				return err
+			}
+		case "logrus":
+			p.logger = logger.NewLogrusLogger(logrus.New(), logger.LogrusLevel(p.config.Project.Logger.Level))
+		default:
+			p.logger = logger.NewStdLogger(logger.STDLevel(logger.InfoLevel), logger.STDWriter(os.Stderr))
+		}
+	}
+
+	return
 }
 
 func (p *cmd) Stop() error {
-	// defer p.logger.ClearSubscribers()
 	if err := p.routesManager.Stop(); err != nil {
-		// p.logger.Error("trellis_routes_stop_failed", err)
 		return err
 	}
 
@@ -204,12 +224,12 @@ func New(opts ...Option) Cmd {
 
 	cmd.Init(opts...)
 
-	// cmd.logger = logger.NewLogger()
 	cmd.app = cli.NewApp()
 
 	cmd.routesManager = routes.NewManager(
 		routes.CompManager(DefaultCompManager),
 		routes.WithRouter(routes.NewRoutes()),
+		routes.Logger(logger.WithPrefix(cmd.logger, "component", "routes")),
 	)
 
 	cmd.app.Commands = cli.Commands{

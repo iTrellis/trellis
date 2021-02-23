@@ -22,6 +22,7 @@ type Configure struct {
 }
 
 type Project struct {
+	Logger     *Logger     `json:"logger" yaml:"logger"`
 	Registries []*Registry `json:"registries" yaml:"registries"`
 	Services   []*Service  `json:"services" yaml:"services"`
 }
