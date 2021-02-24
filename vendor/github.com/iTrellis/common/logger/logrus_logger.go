@@ -95,7 +95,7 @@ func (p *logrusLogger) logEvent(evt *Event) {
 	return
 }
 
-func (p *logrusLogger) Publish(evts ...interface{}) {
+func (p *logrusLogger) Publish(evts ...interface{}) error {
 	for _, evt := range evts {
 		switch eType := evt.(type) {
 		case Event:
@@ -105,9 +105,10 @@ func (p *logrusLogger) Publish(evts ...interface{}) {
 		case Level:
 			p.options.level = eType
 		default:
-			panic(fmt.Errorf("unsupported event type: %s", reflect.TypeOf(evt).Name()))
+			return fmt.Errorf("unsupported event type: %s", reflect.TypeOf(evt).Name())
 		}
 	}
+	return nil
 }
 
 func (p *logrusLogger) Log(kvs ...interface{}) error {

@@ -47,6 +47,8 @@ type stdLogger struct {
 	id      string
 	options STDOptions
 	logger  kitlog.Logger
+
+	prefixes []interface{}
 }
 
 // NewStdLogger new std logger
@@ -76,19 +78,20 @@ func (p *stdLogger) GetID() string {
 	return p.id
 }
 
-func (p *stdLogger) Publish(evts ...interface{}) {
+func (p *stdLogger) Publish(evts ...interface{}) error {
 	for _, evt := range evts {
-		switch eType := evt.(type) {
+		switch t := evt.(type) {
 		case Event:
-			p.logEvent(&eType)
+			p.logEvent(&t)
 		case *Event:
-			p.logEvent(eType)
+			p.logEvent(t)
 		case Level:
-			p.options.level = eType
+			p.options.level = t
 		default:
-			panic(fmt.Errorf("unsupported event type: %s", reflect.TypeOf(evt).Name()))
+			return fmt.Errorf("unsupported event type: %+v", reflect.TypeOf(evt))
 		}
 	}
+	return nil
 }
 
 func (p *stdLogger) SetLevel(lvl Level) {
@@ -120,7 +123,8 @@ func (p *stdLogger) logEvent(log *Event) error {
 
 // Debug 调试
 func (p *stdLogger) Debug(kvs ...interface{}) {
-	p.pubLog(DebugLevel, kvs...)
+	logs := append(p.prefixes, kvs...)
+	p.pubLog(DebugLevel, logs...)
 }
 
 // Debugf 调试
@@ -130,7 +134,8 @@ func (p *stdLogger) Debugf(msg string, kvs ...interface{}) {
 
 // Info 信息
 func (p *stdLogger) Info(kvs ...interface{}) {
-	p.pubLog(InfoLevel, kvs...)
+	logs := append(p.prefixes, kvs...)
+	p.pubLog(InfoLevel, logs...)
 }
 
 // Infof 信息
@@ -140,7 +145,8 @@ func (p *stdLogger) Infof(msg string, kvs ...interface{}) {
 
 // Warn 警告
 func (p *stdLogger) Warn(kvs ...interface{}) {
-	p.pubLog(WarnLevel, kvs...)
+	logs := append(p.prefixes, kvs...)
+	p.pubLog(WarnLevel, logs...)
 }
 
 // Warnf 警告
@@ -150,7 +156,8 @@ func (p *stdLogger) Warnf(msg string, kvs ...interface{}) {
 
 // Error 错误
 func (p *stdLogger) Error(kvs ...interface{}) {
-	p.pubLog(ErrorLevel, kvs...)
+	logs := append(p.prefixes, kvs...)
+	p.pubLog(ErrorLevel, logs...)
 }
 
 // Errorf 错误
@@ -160,7 +167,8 @@ func (p *stdLogger) Errorf(msg string, kvs ...interface{}) {
 
 // Critical 严重的
 func (p *stdLogger) Critical(kvs ...interface{}) {
-	p.pubLog(CriticalLevel, kvs...)
+	logs := append(p.prefixes, kvs...)
+	p.pubLog(CriticalLevel, logs...)
 }
 
 // Criticalf 严重的
@@ -170,10 +178,20 @@ func (p *stdLogger) Criticalf(msg string, kvs ...interface{}) {
 
 // Panic panic
 func (p *stdLogger) Panic(kvs ...interface{}) {
-	p.pubLog(PanicLevel, kvs...)
+	logs := append(p.prefixes, kvs...)
+	p.pubLog(PanicLevel, logs...)
 }
 
 // Panicf panic
 func (p *stdLogger) Panicf(msg string, kvs ...interface{}) {
 	p.Panic("msg", fmt.Sprintf(msg, kvs...))
+}
+
+func (p *stdLogger) WithPrefix(kvs ...interface{}) Logger {
+	return &stdLogger{
+		id:       uuid.NewString(),
+		options:  p.options,
+		prefixes: append(kvs, p.prefixes...),
+		logger:   p.logger,
+	}
 }

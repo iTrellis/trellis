@@ -184,8 +184,8 @@ func (p *publisher) RemoveSubscriber(ids ...string) error {
 	return p.eventGroup.RemoveSubscriber(ids...)
 }
 
-func (p *publisher) Publish(values ...interface{}) {
-	p.eventGroup.Publish(values...)
+func (p *publisher) Publish(values ...interface{}) error {
+	return p.eventGroup.Publish(values...)
 }
 
 func (p *publisher) ClearSubscribers() {

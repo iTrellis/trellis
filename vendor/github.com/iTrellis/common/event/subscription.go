@@ -17,20 +17,23 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package event
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // Subscriber 消费者
 type Subscriber interface {
 	GetID() string
-	Publish(values ...interface{})
+	Publish(values ...interface{}) error
 	Stop()
 }
 
 // NewDefSubscriber 生成默认的消费者
 func NewDefSubscriber(sub interface{}) (Subscriber, error) {
+
 	var subscriber Subscriber
 	switch s := sub.(type) {
-	case func(...interface{}):
+	case func(...interface{}) error:
 		subscriber = &defSubscriber{
 			id: GenSubscriberID(),
 			fn: s,
@@ -48,7 +51,7 @@ func NewDefSubscriber(sub interface{}) (Subscriber, error) {
 // This value and can be passed to Unsubscribe when the observer is no longer interested in receiving messages
 type defSubscriber struct {
 	id string
-	fn func(values ...interface{})
+	fn func(values ...interface{}) error
 }
 
 // GetID return Subscriber's id
@@ -57,8 +60,8 @@ func (p *defSubscriber) GetID() string {
 }
 
 // Publish 发布信息
-func (p *defSubscriber) Publish(values ...interface{}) {
-	p.fn(values...)
+func (p *defSubscriber) Publish(values ...interface{}) error {
+	return p.fn(values...)
 }
 
 // Stop do nothing

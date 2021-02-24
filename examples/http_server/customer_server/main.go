@@ -38,6 +38,7 @@ func main() {
 var defHandler *compHandler
 
 func customHandler(c *gin.Context) {
+	defHandler.options.Logger.Info("msg", "custom_handler")
 	c.JSON(200, map[string]string{"message": defHandler.Response})
 }
 
@@ -45,11 +46,16 @@ func NewCompHandler(opts ...component.Option) (component.Component, error) {
 	defHandler = &compHandler{
 		Response: "pong",
 	}
+
+	for _, o := range opts {
+		o(&defHandler.options)
+	}
 	return defHandler, nil
 }
 
 type compHandler struct {
 	Response string
+	options  component.Options
 }
 
 func (p *compHandler) Route(topic string) component.Handler {

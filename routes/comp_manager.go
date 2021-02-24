@@ -44,7 +44,6 @@ type compManager struct {
 // NewCompManager new default component manager
 func NewCompManager() component.Manager {
 	return &compManager{
-
 		components:        make(map[string]component.Component),
 		newComponentFuncs: make(map[string]component.NewComponentFunc),
 		startedComponents: make(map[string]bool),

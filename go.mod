@@ -13,7 +13,7 @@ require (
 	github.com/gin-gonic/gin v1.6.3
 	github.com/golang/protobuf v1.3.5
 	github.com/google/uuid v1.2.0
-	github.com/iTrellis/common v0.21.3
+	github.com/iTrellis/common v0.21.4
 	github.com/iTrellis/config v0.21.3
 	github.com/iTrellis/node v0.21.2
 	github.com/iTrellis/xorm_ext v0.21.3

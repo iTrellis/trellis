@@ -16,7 +16,6 @@ func main() {
 		panic(err)
 	}
 
-	// api.RegistUseFuncs()
 	// Explicit to register component function
 	cmd.DefaultCompManager.RegisterComponentFunc(
 		&service.Service{Name: "component_ping", Version: "v1"},

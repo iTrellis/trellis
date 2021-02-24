@@ -36,7 +36,7 @@ const (
 type SubscriberGroup interface {
 	Subscriber(interface{}) (Subscriber, error)
 	RemoveSubscriber(ids ...string) error
-	Publish(values ...interface{})
+	Publish(values ...interface{}) error
 	ClearSubscribers()
 }
 
@@ -113,7 +113,7 @@ func (p *defSubscriberGroup) RemoveSubscriber(ids ...string) error {
 }
 
 // Publish 发布消息
-func (p *defSubscriberGroup) Publish(values ...interface{}) {
+func (p *defSubscriberGroup) Publish(values ...interface{}) error {
 	var subscribers []Subscriber
 	p.locker.RLock()
 	for _, s := range p.subscribers {
@@ -126,9 +126,13 @@ func (p *defSubscriberGroup) Publish(values ...interface{}) {
 		case SubscriberModelGoutine:
 			go sub.Publish(values...)
 		default:
-			sub.Publish(values...)
+			if err := sub.Publish(values...); err != nil {
+				return err
+			}
 		}
 	}
+
+	return nil
 }
 
 // ClearSubscribers 全部清理

@@ -102,7 +102,10 @@ func (p *cmd) Start() error {
 			go p.routesManager.Router().WatchService(
 				regConfig.Name,
 				registry.WatchService(w.Service),
-				registry.WatchContext(w.Options))
+				registry.WatchContext(w.Options),
+				registry.WatchLogger(
+					logger.WithPrefix(p.logger, "registry", regConfig.Name, "watcher", w.Service.FullRegistryPath())),
+			)
 		}
 	}
 
@@ -110,9 +113,9 @@ func (p *cmd) Start() error {
 
 		if _, err := p.routesManager.CompManager().NewComponent(
 			&serviceConf.Service,
-			// component.Logger(p.logger),
 			component.Caller(p.routesManager),
 			component.Config(serviceConf.Options.ToConfig()),
+			component.Logger(logger.WithPrefix(p.logger, "component", serviceConf.Service.TrellisPath())),
 		); err != nil {
 			return err
 		}
@@ -166,8 +169,6 @@ func (p *cmd) Init(opts ...Option) (err error) {
 		p.logger = logger.NewStdLogger(logger.STDLevel(logger.InfoLevel), logger.STDWriter(os.Stderr))
 	} else {
 		switch p.config.Project.Logger.Type {
-		case "std":
-			p.logger = logger.NewStdLogger(logger.STDLevel(p.config.Project.Logger.Level), logger.STDWriter(os.Stderr))
 		case "file":
 			p.logger, err = logger.NewFileLogger()
 			if err != nil {
@@ -175,8 +176,10 @@ func (p *cmd) Init(opts ...Option) (err error) {
 			}
 		case "logrus":
 			p.logger = logger.NewLogrusLogger(logrus.New(), logger.LogrusLevel(p.config.Project.Logger.Level))
+		case "std":
+			fallthrough
 		default:
-			p.logger = logger.NewStdLogger(logger.STDLevel(logger.InfoLevel), logger.STDWriter(os.Stderr))
+			p.logger = logger.NewStdLogger(logger.STDLevel(p.config.Project.Logger.Level), logger.STDWriter(os.Stderr))
 		}
 	}
 
@@ -228,8 +231,8 @@ func New(opts ...Option) Cmd {
 
 	cmd.routesManager = routes.NewManager(
 		routes.CompManager(DefaultCompManager),
-		routes.WithRouter(routes.NewRoutes()),
-		routes.Logger(logger.WithPrefix(cmd.logger, "component", "routes")),
+		routes.WithRouter(routes.NewRoutes(logger.WithPrefix(cmd.logger, "component", "routes"))),
+		routes.Logger(logger.WithPrefix(cmd.logger, "component", "routes_manager")),
 	)
 
 	cmd.app.Commands = cli.Commands{

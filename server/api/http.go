@@ -171,7 +171,7 @@ func (p *httpServer) init() error {
 	}
 
 	for _, v := range handlers {
-		// p.options.Logger.Info("start_costomer_handler", v.Name, v.URLPath, v.Method)
+		p.options.Logger.Info("msg", "start_customer_handler", "name", v.Name, "path", v.URLPath, "method", v.Method)
 		engine.Handle(v.Method, v.URLPath, v.Func)
 	}
 
@@ -213,7 +213,7 @@ func (p *httpServer) Start() error {
 		}
 
 		if err != http.ErrServerClosed {
-			// p.options.Logger.Error("http_server_closed", err.Error())
+			p.options.Logger.Error("msg", "http_server_closed", "error", err.Error())
 		}
 
 		ch <- err
@@ -250,14 +250,20 @@ func (p *httpServer) serve(gCtx *gin.Context) {
 		TraceIP: addr.ExternalIPs()[0],
 	}
 
-	// p.options.Logger.Info("request", "trace_id", traceID, "api_name", apiName, "client_ip", clientIP)
+	p.options.Logger.Info("msg", "request", "trace_id", traceID, "api_name", apiName, "client_ip", clientIP)
+	timeNow := time.Now().UnixNano()
+	defer func() {
+		endNow := time.Now().UnixNano()
+		p.options.Logger.Info("msg", "response", "trace_id", traceID, "api_name", apiName, "client_ip", clientIP,
+			"request_time", timeNow, "end_time", endNow, "cost_time", endNow-timeNow)
+	}()
 	api, ok := p.getAPI(apiName)
 	if !ok {
 		r.Code = 11
 		r.Msg = "api not found"
 		r.Namespace = "trellis"
 		gCtx.JSON(http.StatusBadRequest, r)
-		// p.options.Logger.Error("api_not_found", "trace_id", traceID, "api_name", apiName, "client_ip", clientIP)
+		p.options.Logger.Error("msg", "api_not_found", "trace_id", traceID, "api_name", apiName, "client_ip", clientIP)
 		return
 	}
 
@@ -267,7 +273,7 @@ func (p *httpServer) serve(gCtx *gin.Context) {
 		r.Msg = fmt.Sprintf("bad request: %s", err.Error())
 		r.Namespace = "trellis"
 		gCtx.JSON(http.StatusBadRequest, r)
-		// p.options.Logger.Error("get_raw_data", "trace_id", r.TraceID, "api_name", apiName, "client_ip", clientIP, "err", err)
+		p.options.Logger.Error("msg", "get_raw_data", "trace_id", r.TraceID, "api_name", apiName, "client_ip", clientIP, "err", err)
 		return
 	}
 
@@ -294,10 +300,6 @@ func (p *httpServer) serve(gCtx *gin.Context) {
 	var resp interface{}
 	switch p.mode {
 	case "local", "":
-		// resp, err = p.options.Manager.Call(msg,
-		// 	component.Timeout(30*time.Second),
-		// 	component.Keys(msg.Service().FullPath(), clientIP))
-
 		resp, err = p.options.Caller.CallComponent(context.Background(), msg)
 	case "remote":
 		resp, err = p.options.Caller.CallServer(context.Background(), msg)
@@ -325,7 +327,7 @@ func (p *httpServer) serve(gCtx *gin.Context) {
 		r.Namespace = "trellis"
 	}
 
-	// p.options.Logger.Error("call_server_failed", "trace_id", r.TraceID, "api_name", apiName, "client_ip", clientIP, "err", r)
+	p.options.Logger.Error("msg", "call_server_failed", "trace_id", r.TraceID, "api_name", apiName, "client_ip", clientIP, "err", r)
 	gCtx.JSON(200, r)
 }
 

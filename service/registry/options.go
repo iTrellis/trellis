@@ -152,6 +152,14 @@ type WatchOptions struct {
 	// Other options for implementations of the interface
 	// can be stored in a context
 	Options config.Options
+
+	Logger logger.Logger
+}
+
+func WatchLogger(l logger.Logger) WatchOption {
+	return func(w *WatchOptions) {
+		w.Logger = l
+	}
 }
 
 func WatchService(service service.Service) WatchOption {

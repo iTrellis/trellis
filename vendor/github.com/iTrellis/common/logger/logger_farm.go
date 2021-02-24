@@ -17,7 +17,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package logger
 
-import "github.com/google/uuid"
+import (
+	"fmt"
+
+	"github.com/google/uuid"
+)
 
 // WithPrefix with prefix
 func WithPrefix(logger Logger, prefixes ...interface{}) Logger {
@@ -37,62 +41,74 @@ type context struct {
 
 // Debug 调试
 func (p *context) Debug(kvs ...interface{}) {
-	p.logger.Debug(kvs...)
+	logs := append(p.prefixes, kvs...)
+	p.logger.Debug(logs...)
 }
 
 // Debugf 调试
 func (p *context) Debugf(msg string, kvs ...interface{}) {
-	p.logger.Debugf(msg, kvs...)
+	logs := append(p.prefixes, "msg", fmt.Sprintf(msg, kvs...))
+	p.logger.Debug(logs...)
 }
 
 // Info 信息
 func (p *context) Info(kvs ...interface{}) {
-	p.logger.Info(kvs...)
+	logs := append(p.prefixes, kvs...)
+	p.logger.Info(logs...)
 }
 
 // Infof 信息
 func (p *context) Infof(msg string, kvs ...interface{}) {
-	p.logger.Infof(msg, kvs...)
+	logs := append(p.prefixes, "msg", fmt.Sprintf(msg, kvs...))
+	p.logger.Info(logs...)
 }
 
 // Warn 警告
 func (p *context) Warn(kvs ...interface{}) {
-	p.logger.Warn(kvs...)
+	logs := append(p.prefixes, kvs...)
+	p.logger.Warn(logs...)
 }
 
 // Warnf 警告
 func (p *context) Warnf(msg string, kvs ...interface{}) {
-	p.logger.Warnf(msg, kvs...)
+	logs := append(p.prefixes, "msg", fmt.Sprintf(msg, kvs...))
+	p.logger.Warn(logs...)
 }
 
 // Error 错误
 func (p *context) Error(kvs ...interface{}) {
-	p.logger.Error(kvs...)
+	logs := append(p.prefixes, kvs...)
+	p.logger.Error(logs...)
 }
 
 // Errorf 错误
 func (p *context) Errorf(msg string, kvs ...interface{}) {
-	p.logger.Errorf(msg, kvs...)
+	logs := append(p.prefixes, "msg", fmt.Sprintf(msg, kvs...))
+	p.logger.Error(logs...)
 }
 
 // Critical 严重的
 func (p *context) Critical(kvs ...interface{}) {
-	p.logger.Critical(kvs...)
+	logs := append(p.prefixes, kvs...)
+	p.logger.Critical(logs...)
 }
 
 // Criticalf 严重的
 func (p *context) Criticalf(msg string, kvs ...interface{}) {
-	p.logger.Criticalf(msg, kvs...)
+	logs := append(p.prefixes, "msg", fmt.Sprintf(msg, kvs...))
+	p.logger.Critical(logs...)
 }
 
 // Panic panic
 func (p *context) Panic(kvs ...interface{}) {
-	p.logger.Panic(kvs...)
+	logs := append(p.prefixes, kvs...)
+	p.logger.Panic(logs...)
 }
 
 // Panicf panic
 func (p *context) Panicf(msg string, kvs ...interface{}) {
-	p.logger.Panicf(msg, kvs...)
+	logs := append(p.prefixes, "msg", fmt.Sprintf(msg, kvs...))
+	p.logger.Panic(logs...)
 }
 
 func (p *context) GetID() string {
@@ -104,8 +120,21 @@ func (p *context) Log(kvs ...interface{}) error {
 	return p.logger.Log(logs...)
 }
 
-func (p *context) Publish(vals ...interface{}) {
-	p.logger.Publish(vals...)
+func (p *context) Publish(vals ...interface{}) error {
+	for _, v := range vals {
+		switch t := v.(type) {
+		case Event:
+			t.Fields = append(p.prefixes, t.Fields...)
+			p.logger.Publish(&t)
+		case *Event:
+			evt := *t
+			evt.Fields = append(p.prefixes, evt.Fields...)
+			p.logger.Publish(&evt)
+		case Level:
+			p.logger.Publish(t)
+		}
+	}
+	return nil
 }
 
 func (p *context) SetLevel(lvl Level) {

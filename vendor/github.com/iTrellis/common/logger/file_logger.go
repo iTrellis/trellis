@@ -50,6 +50,8 @@ type fileLogger struct {
 	lastMoveFlag  int
 
 	ticker *time.Ticker
+
+	prefixes []interface{}
 }
 
 // FileOptions file options
@@ -339,19 +341,21 @@ func (p *fileLogger) Stop() {
 	close(p.logChan)
 }
 
-func (p *fileLogger) Publish(evts ...interface{}) {
+func (p *fileLogger) Publish(evts ...interface{}) error {
 	for _, evt := range evts {
-		switch eType := evt.(type) {
+		switch t := evt.(type) {
 		case Event:
-			p.logChan <- &eType
+			p.logChan <- &t
 		case *Event:
-			p.logChan <- eType
+			evt := *t
+			p.logChan <- &evt
 		case Level:
-			p.options.level = eType
+			p.options.level = t
 		default:
-			panic(fmt.Errorf("unsupported event type: %s", reflect.TypeOf(evt).Name()))
+			return fmt.Errorf("unsupported event type: %+v", reflect.TypeOf(evt))
 		}
 	}
+	return nil
 }
 
 func (p *fileLogger) pubLog(level Level, kvs ...interface{}) {

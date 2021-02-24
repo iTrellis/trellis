@@ -29,6 +29,18 @@ import (
 	"github.com/iTrellis/trellis/service/router"
 )
 
+type Manager interface {
+	Init(...Option)
+
+	service.LifeCycle
+
+	Router() router.Router
+
+	CompManager() component.Manager
+
+	message.Caller
+}
+
 // NewManager routes manager
 func NewManager(opts ...Option) Manager {
 
@@ -59,7 +71,7 @@ func (p *manager) Init(opts ...Option) {
 	}
 
 	if p.router == nil {
-		p.router = NewRoutes()
+		p.router = NewRoutes(options.logger)
 	}
 
 	if p.manager == nil {
