@@ -71,7 +71,6 @@ func (p *cmd) Options() Options {
 }
 
 func (p *cmd) Start() error {
-	builder.Show()
 
 	for _, regConfig := range p.config.Project.Registries {
 		fn, ok := DefaultNewRegistryFuncs[regConfig.Type]
@@ -88,6 +87,8 @@ func (p *cmd) Start() error {
 			registry.Logger(logger.WithPrefix(p.logger, "registry", regConfig.Name)),
 		)
 
+		p.logger.Debug("new_registry", regConfig.Name, "address", regConfig.ServerAddr)
+
 		reg, err := fn(opts...)
 		if err != nil {
 			return err
@@ -99,6 +100,8 @@ func (p *cmd) Start() error {
 		}
 
 		for _, w := range regConfig.Watchers {
+			p.logger.Debug("new_registry_watcher", regConfig.Name, "address", regConfig.ServerAddr,
+				"watch_service", w.Service.FullRegistryPath())
 			go p.routesManager.Router().WatchService(
 				regConfig.Name,
 				registry.WatchService(w.Service),
@@ -111,12 +114,14 @@ func (p *cmd) Start() error {
 
 	for _, serviceConf := range p.config.Project.Services {
 
+		p.logger.Debug("new_component", serviceConf.Service.TrellisPath())
 		if _, err := p.routesManager.CompManager().NewComponent(
 			&serviceConf.Service,
 			component.Caller(p.routesManager),
 			component.Config(serviceConf.Options.ToConfig()),
 			component.Logger(logger.WithPrefix(p.logger, "component", serviceConf.Service.TrellisPath())),
 		); err != nil {
+			p.logger.Error("new_component", serviceConf.Service.TrellisPath(), "err", err)
 			return err
 		}
 
@@ -147,22 +152,9 @@ func (p *cmd) Start() error {
 }
 
 func (p *cmd) Init(opts ...Option) (err error) {
+	options := &Options{}
 	for _, o := range opts {
-		o(&p.options)
-	}
-
-	if p.options.configFile != "" {
-		reader, err := config.NewSuffixReader(config.ReaderOptionFilename(p.options.configFile))
-		if err != nil {
-			return err
-		}
-
-		err = reader.Read(&p.config)
-		if err != nil {
-			return err
-		}
-	} else if p.options.config != nil {
-		p.config = *p.options.config
+		o(options)
 	}
 
 	if p.config.Project.Logger == nil {
@@ -181,6 +173,34 @@ func (p *cmd) Init(opts ...Option) (err error) {
 		default:
 			p.logger = logger.NewStdLogger(logger.STDLevel(p.config.Project.Logger.Level), logger.STDWriter(os.Stderr))
 		}
+	}
+
+	p.routesManager = routes.NewManager(
+		routes.CompManager(DefaultCompManager),
+		routes.WithRouter(routes.NewRoutes(logger.WithPrefix(p.logger, "component", "routes"))),
+		routes.Logger(logger.WithPrefix(p.logger, "component", "routes_manager")),
+	)
+
+	if options.config == nil && options.configFile == "" {
+		return
+	}
+	p.logger.Info("msg", "initial", "config_file", options.configFile, "configs", options.config)
+
+	if options.configFile != "" {
+		p.options.configFile = options.configFile
+
+		reader, err := config.NewSuffixReader(config.ReaderOptionFilename(p.options.configFile))
+		if err != nil {
+			return err
+		}
+
+		err = reader.Read(&p.config)
+		if err != nil {
+			return err
+		}
+	} else if options.config != nil {
+		p.options.config = options.config
+		p.config = *p.options.config
 	}
 
 	return
@@ -222,18 +242,16 @@ func (p *cmd) App() *cli.App {
 }
 
 // New new command interface
-func New(opts ...Option) Cmd {
-	cmd := &cmd{}
+func New(opts ...Option) (Cmd, error) {
+	builder.Show()
 
-	cmd.Init(opts...)
+	cmd := &cmd{
+		app: cli.NewApp(),
+	}
 
-	cmd.app = cli.NewApp()
-
-	cmd.routesManager = routes.NewManager(
-		routes.CompManager(DefaultCompManager),
-		routes.WithRouter(routes.NewRoutes(logger.WithPrefix(cmd.logger, "component", "routes"))),
-		routes.Logger(logger.WithPrefix(cmd.logger, "component", "routes_manager")),
-	)
+	if err := cmd.Init(opts...); err != nil {
+		return nil, err
+	}
 
 	cmd.app.Commands = cli.Commands{
 		&cli.Command{
@@ -261,7 +279,7 @@ func New(opts ...Option) Cmd {
 					Usage: "list of local components",
 					Action: func(ctx *cli.Context) error {
 						for _, cpt := range cmd.routesManager.CompManager().ListComponents() {
-							fmt.Printf("components: %s - started: %t", cpt.Name, cpt.Started)
+							fmt.Printf("components: %s - started: %t\n", cpt.Name, cpt.Started)
 						}
 						return nil
 					},
@@ -272,11 +290,9 @@ func New(opts ...Option) Cmd {
 			Name:  "run",
 			Usage: "start & stop components",
 			Action: func(ctx *cli.Context) error {
-				configFile := ctx.String("config")
-				if configFile != "" {
-					if err := cmd.Init(ConfigFile(configFile)); err != nil {
-						return err
-					}
+				err := cmd.Init(ConfigFile(ctx.String("config")))
+				if err != nil {
+					return err
 				}
 				return cmd.Run()
 			},
@@ -291,11 +307,9 @@ func New(opts ...Option) Cmd {
 			Name:  "brun",
 			Usage: "start & block stop components",
 			Action: func(ctx *cli.Context) error {
-				configFile := ctx.String("config")
-				if configFile != "" {
-					if err := cmd.Init(ConfigFile(configFile)); err != nil {
-						return err
-					}
+				err := cmd.Init(ConfigFile(ctx.String("config")))
+				if err != nil {
+					return err
 				}
 				return cmd.BlockRun()
 			},
@@ -316,5 +330,5 @@ func New(opts ...Option) Cmd {
 		break
 	}
 
-	return cmd
+	return cmd, nil
 }

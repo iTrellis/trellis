@@ -19,6 +19,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/iTrellis/trellis/cmd"
 	"github.com/iTrellis/trellis/examples/components"
@@ -26,9 +27,12 @@ import (
 )
 
 func main() {
-	c := cmd.New()
+	c, err := cmd.New()
+	if err != nil {
+		log.Fatalln(err)
+	}
 	if err := c.Init(cmd.ConfigFile("config.yaml")); err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 
 	// Explicit to register component function
@@ -39,14 +43,14 @@ func main() {
 	// implicit in pong.go
 
 	if err := c.Start(); err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 
 	defer c.Stop()
 
 	cpt, err := cmd.DefaultCompManager.GetComponent(&service.Service{Name: "component_ping", Version: "v1"})
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 
 	hf := cpt.Route("ping")
@@ -55,7 +59,7 @@ func main() {
 	}
 	resp, err := hf(nil)
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 	fmt.Println("get response:", resp)
 }

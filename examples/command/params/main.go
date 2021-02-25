@@ -19,6 +19,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/iTrellis/trellis/cmd"
@@ -55,13 +56,13 @@ func (p *command) Route(topic string) component.Handler {
 
 func main() {
 	cs := &configure.Service{Service: s}
-	c := cmd.New(cmd.WithConfig(&configure.Configure{Project: configure.Project{
+	c, err := cmd.New(cmd.WithConfig(&configure.Configure{Project: configure.Project{
 		Services: []*configure.Service{cs},
 	}}))
 
-	// if err := c.Start(); err != nil {
-	// 	panic(err)
-	// }
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	app := c.App()
 

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log"
+
 	"github.com/iTrellis/trellis/cmd"
 	"github.com/iTrellis/trellis/server/api"
 	"github.com/iTrellis/trellis/service"
@@ -23,13 +25,17 @@ func init() {
 }
 
 func main() {
-	c := cmd.New()
+	c, err := cmd.New()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	if err := c.Init(cmd.ConfigFile("config.yaml")); err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 
 	if err := c.Start(); err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 
 	c.BlockRun()

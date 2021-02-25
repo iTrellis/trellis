@@ -19,6 +19,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/iTrellis/trellis/cmd"
@@ -26,10 +27,11 @@ import (
 	"github.com/iTrellis/trellis/service/component"
 )
 
-var s = service.Service{Name: "command_example", Version: "v1"}
+// var s = service.Service{Name: "command_example", Version: "v1"}
 
 func init() {
-	cmd.DefaultCompManager.RegisterComponentFunc(&s, newSimpleComp)
+	cmd.DefaultCompManager.RegisterComponentFunc(
+		&service.Service{Name: "command_example", Version: "v1"}, newSimpleComp)
 }
 
 type command struct{}
@@ -53,8 +55,10 @@ func (p *command) Route(topic string) component.Handler {
 }
 
 func main() {
-	c := cmd.New()
+	c, err := cmd.New()
+	if err != nil {
+	}
 	if err := c.App().Run(os.Args); err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 }

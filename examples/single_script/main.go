@@ -56,9 +56,12 @@ func (p *singleScript) Route(topic string) component.Handler {
 func main() {
 
 	cs := &configure.Service{Service: s}
-	c := cmd.New(cmd.WithConfig(&configure.Configure{Project: configure.Project{
+	c, err := cmd.New(cmd.WithConfig(&configure.Configure{Project: configure.Project{
 		Services: []*configure.Service{cs},
 	}}))
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	if err := c.Start(); err != nil {
 		log.Fatalln(err)

@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/iTrellis/common/logger"
 	"github.com/iTrellis/node"
 	"github.com/iTrellis/trellis/service"
 	"github.com/iTrellis/trellis/service/client/grpc"
@@ -54,6 +55,7 @@ func NewManager(opts ...Option) Manager {
 type manager struct {
 	router  router.Router
 	manager component.Manager
+	logger  logger.Logger
 }
 
 func (p *manager) Init(opts ...Option) {
@@ -77,6 +79,8 @@ func (p *manager) Init(opts ...Option) {
 	if p.manager == nil {
 		p.manager = NewCompManager()
 	}
+
+	p.logger = options.logger
 }
 
 func (p *manager) CallComponent(ctx context.Context, msg message.Message) (interface{}, error) {
@@ -133,7 +137,15 @@ func (p *manager) CallServer(ctx context.Context, msg message.Message) (interfac
 func (p *manager) Start() error {
 
 	for _, cpt := range p.manager.ListComponents() {
+		p.logger.Info("start_component", cpt.Name)
+
+		if cpt.Component == nil {
+			err := fmt.Errorf("component not found: %s", cpt.Name)
+			p.logger.Error("start_component", cpt.Name, "err", "not found")
+			return err
+		}
 		if err := cpt.Component.Start(); err != nil {
+			p.logger.Error("start_component", cpt.Name, "err", err.Error())
 			return err
 		}
 	}
@@ -145,6 +157,7 @@ func (p *manager) Stop() error {
 
 	for _, cpt := range p.manager.ListComponents() {
 		if err := cpt.Component.Stop(); err != nil {
+			p.logger.Error("stop_component", cpt.Name, "err", err.Error())
 			return err
 		}
 	}

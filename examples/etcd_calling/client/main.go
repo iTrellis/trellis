@@ -20,6 +20,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/iTrellis/trellis/cmd"
@@ -35,9 +36,12 @@ func init() {
 }
 func main() {
 
-	c := cmd.New()
+	c, err := cmd.New()
+	if err != nil {
+		log.Fatalln(err)
+	}
 	if err := c.Init(cmd.ConfigFile(config)); err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 
 	// Explicit to register component function
@@ -45,7 +49,7 @@ func main() {
 		components.NewPing)
 
 	if err := c.Start(); err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 
 	defer c.Stop()
@@ -54,7 +58,7 @@ func main() {
 
 	cpt, err := cmd.DefaultCompManager.GetComponent(&service.Service{Name: "component_ping", Version: "v1"})
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 
 	hf := cpt.Route("etcd_ping")

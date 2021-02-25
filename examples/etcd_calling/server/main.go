@@ -19,6 +19,7 @@ package main
 
 import (
 	"flag"
+	"log"
 
 	"github.com/iTrellis/trellis/cmd"
 
@@ -36,13 +37,16 @@ func main() {
 
 	flag.Parse()
 
-	c := cmd.New()
+	c, err := cmd.New()
+	if err != nil {
+		log.Fatalln(err)
+	}
 	if err := c.Init(cmd.ConfigFile(config)); err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 
 	if err := c.Start(); err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 
 	c.BlockRun()
