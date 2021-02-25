@@ -272,6 +272,12 @@ func New(opts ...Option) Cmd {
 			Name:  "run",
 			Usage: "start & stop components",
 			Action: func(ctx *cli.Context) error {
+				configFile := ctx.String("config")
+				if configFile != "" {
+					if err := cmd.Init(ConfigFile(configFile)); err != nil {
+						return err
+					}
+				}
 				return cmd.Run()
 			},
 			Flags: []cli.Flag{
@@ -285,6 +291,12 @@ func New(opts ...Option) Cmd {
 			Name:  "brun",
 			Usage: "start & block stop components",
 			Action: func(ctx *cli.Context) error {
+				configFile := ctx.String("config")
+				if configFile != "" {
+					if err := cmd.Init(ConfigFile(configFile)); err != nil {
+						return err
+					}
+				}
 				return cmd.BlockRun()
 			},
 			Flags: []cli.Flag{

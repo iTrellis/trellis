@@ -22,7 +22,6 @@ import (
 	"os"
 
 	"github.com/iTrellis/trellis/cmd"
-	"github.com/iTrellis/trellis/configure"
 	"github.com/iTrellis/trellis/service"
 	"github.com/iTrellis/trellis/service/component"
 )
@@ -54,17 +53,8 @@ func (p *command) Route(topic string) component.Handler {
 }
 
 func main() {
-
-	cs := &configure.Service{Service: s}
-	c := cmd.New(cmd.WithConfig(&configure.Configure{Project: configure.Project{
-		Services: []*configure.Service{cs},
-	}}))
-
-	// if err := c.Start(); err != nil {
-	// 	panic(err)
-	// }
-
-	app := c.App()
-
-	app.Run(os.Args)
+	c := cmd.New()
+	if err := c.App().Run(os.Args); err != nil {
+		panic(err)
+	}
 }

@@ -1,0 +1,5 @@
+project:
+  services:
+    -
+      name: command_example
+      version: v1
