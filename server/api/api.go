@@ -17,6 +17,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package api
 
+import "time"
+
 // API api struct
 type API struct {
 	ID             string `xorm:"id"`
@@ -34,12 +36,18 @@ func (*API) TableName() string {
 	return "api"
 }
 
-func (p *httpServer) syncAPIs() {
+func (p *httpServer) syncAPIs(domain string) {
 	for {
-		// p.options.Logger.Info("start_sync_apis", time.Now())
+		p.options.Logger.Info("start_sync_apis", time.Now(), "domain", domain)
+
+		parmas := map[string]interface{}{"`status`": "normal"}
+
+		if domain != "" {
+			parmas["`service_domain`"] = domain
+		}
 		var apis []*API
-		if err := p.apiEngine.Where("`status` = ?", "normal").Find(&apis); err != nil {
-			// p.options.Logger.Error("sync_apis_failed", "err", err.Error())
+		if err := p.apiEngine.Where(parmas).Find(&apis); err != nil {
+			p.options.Logger.Error("sync_apis_failed", "err", err.Error())
 			continue
 		}
 
@@ -53,7 +61,7 @@ func (p *httpServer) syncAPIs() {
 		p.syncer.Lock()
 		p.apis = mapAPIs
 		p.syncer.Unlock()
-		// p.options.Logger.Info("end_sync_apis", time.Now())
+		p.options.Logger.Info("end_sync_apis", time.Now())
 
 		<-p.ticker.C
 	}

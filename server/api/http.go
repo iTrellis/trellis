@@ -152,7 +152,7 @@ func (p *httpServer) init() error {
 
 		p.ticker = time.NewTicker(ticker)
 
-		go p.syncAPIs()
+		go p.syncAPIs(apisConf.GetString("service_domain"))
 	default:
 		return fmt.Errorf("unknown apis' config type")
 	}
