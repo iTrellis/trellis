@@ -15,10 +15,9 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-package api
+package server
 
 import (
-	"fmt"
 	"runtime"
 	"strings"
 	"time"
@@ -29,19 +28,7 @@ import (
 	"github.com/iTrellis/config"
 )
 
-var useFuncs = make(map[string]gin.HandlerFunc)
-
-// RegistUseFuncs 注册
-func RegistUseFuncs(name string, fn gin.HandlerFunc) error {
-	_, ok := useFuncs[name]
-	if ok {
-		return fmt.Errorf("use funcs (%s) is already exist", name)
-	}
-	useFuncs[name] = fn
-	return nil
-}
-
-func loadPprof(engine *gin.Engine, conf config.Config) {
+func LoadPprof(engine *gin.Engine, conf config.Config) {
 
 	if conf == nil || engine == nil {
 		return
@@ -55,7 +42,7 @@ func loadPprof(engine *gin.Engine, conf config.Config) {
 	runtime.SetBlockProfileRate(int(conf.GetInt("block-profile-rate", 0)))
 }
 
-func loadCors(engine *gin.Engine, conf config.Config) {
+func LoadCors(engine *gin.Engine, conf config.Config) {
 
 	if engine == nil || conf == nil {
 		return
@@ -79,7 +66,7 @@ func loadCors(engine *gin.Engine, conf config.Config) {
 			MaxAge:           conf.GetTimeDuration("max-age", time.Hour*12),
 		}
 
-		corsConf.AllowOriginFunc = wildcardMatchFunc(corsConf.AllowOrigins)
+		corsConf.AllowOriginFunc = WildcardMatchFunc(corsConf.AllowOrigins)
 	}
 
 	corsConf.AllowHeaders = append(corsConf.AllowHeaders,
@@ -93,7 +80,7 @@ type wildcard struct {
 	suffix string
 }
 
-func wildcardMatchFunc(allowedOrigins []string) func(string) bool {
+func WildcardMatchFunc(allowedOrigins []string) func(string) bool {
 
 	allowedWOrigins := []wildcard{}
 	allowedOriginsAll := false

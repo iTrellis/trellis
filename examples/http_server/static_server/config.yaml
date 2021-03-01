@@ -1,0 +1,12 @@
+project:
+  services:
+    -
+      name: trellis-static
+      version: v1
+      options:
+        http:
+          address: ":8080"
+          static: "/"
+          root: "./root"
+        gin_mode: release
+

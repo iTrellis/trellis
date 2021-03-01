@@ -62,6 +62,18 @@ func RegistCustomHandlers(name, path, method string, fn gin.HandlerFunc) {
 	handlers[name] = &server.Handler{Name: name, URLPath: path, Method: strings.ToUpper(method), Func: fn}
 }
 
+var useFuncs = make(map[string]gin.HandlerFunc)
+
+// RegistUseFuncs 注册
+func RegistUseFuncs(name string, fn gin.HandlerFunc) error {
+	_, ok := useFuncs[name]
+	if ok {
+		return fmt.Errorf("use funcs (%s) is already exist", name)
+	}
+	useFuncs[name] = fn
+	return nil
+}
+
 type httpServer struct {
 	ginMode string
 
@@ -157,14 +169,13 @@ func (p *httpServer) init() error {
 		return fmt.Errorf("unknown apis' config type")
 	}
 
-	httpConf := p.options.Config.GetValuesConfig("http")
-
 	engine := gin.New()
 
 	engine.Use(gin.Recovery())
 
-	loadCors(engine, httpConf.GetValuesConfig("cors"))
-	loadPprof(engine, httpConf.GetValuesConfig("pprof"))
+	httpConf := p.options.Config.GetValuesConfig("http")
+	server.LoadCors(engine, httpConf.GetValuesConfig("cors"))
+	server.LoadPprof(engine, httpConf.GetValuesConfig("pprof"))
 
 	for _, fn := range useFuncs {
 		engine.Use(fn)
