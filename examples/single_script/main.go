@@ -57,7 +57,7 @@ func main() {
 
 	cs := &configure.Service{Service: s}
 	c, err := cmd.New(cmd.WithConfig(&configure.Configure{Project: configure.Project{
-		Services: []*configure.Service{cs},
+		Services: map[string]*configure.Service{cs.TrellisPath(): cs},
 	}}))
 	if err != nil {
 		log.Fatalln(err)

@@ -1,8 +1,16 @@
+
 project:
-    services:
-        -
-            name: component_ping
-            version: v1
-        -
-            name: component_pong
-            version: v1
+  logger:
+    level: 1
+  services:
+    component_ping:
+      name: component_ping
+      version: ${version}
+    component_pong: ${component_pong}
+
+
+version: v1
+
+component_pong:
+  name: component_pong
+  version: ${version}

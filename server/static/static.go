@@ -22,7 +22,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/iTrellis/trellis/cmd"
-	"github.com/iTrellis/trellis/server"
+	"github.com/iTrellis/trellis/server/gin_middlewares"
 	"github.com/iTrellis/trellis/service"
 	"github.com/iTrellis/trellis/service/component"
 )
@@ -65,7 +65,8 @@ func (p *Handler) init() error {
 	engine.Use(gin.Recovery())
 
 	httpConf := p.options.Config.GetValuesConfig("http")
-	server.LoadCors(engine, httpConf.GetValuesConfig("cors"))
+
+	engine.Use(gin_middlewares.LoadCors(httpConf.GetValuesConfig("cors")))
 
 	staticPath := httpConf.GetString("static", "/")
 	rootPath := httpConf.GetString("root", "./static")

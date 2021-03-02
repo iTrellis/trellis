@@ -24,13 +24,6 @@ import (
 	"github.com/iTrellis/trellis/service/codec"
 )
 
-// header keys
-const (
-	XAPIToken   = "x-api-token"
-	XAPITraceID = "x-api-trace-id"
-	XClientIP   = "x-client-ip"
-)
-
 // Message is the interface for publishing asynchronously
 type Message interface {
 	Service() *service.Service

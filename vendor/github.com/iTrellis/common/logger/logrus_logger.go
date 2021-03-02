@@ -31,6 +31,9 @@ type logrusLogger struct {
 
 	options LogrusOptions
 	logger  logrus.FieldLogger
+
+	hasCaller bool
+	prefixes  []interface{}
 }
 
 // LogrusOptions options
@@ -67,6 +70,7 @@ func (p *logrusLogger) logEvent(evt *Event) {
 		return
 	}
 
+	evt.Fields = doCaller(p.hasCaller, p.prefixes, evt.Fields...)
 	vals := genLogs(evt)
 
 	fields := logrus.Fields{}
@@ -97,13 +101,16 @@ func (p *logrusLogger) logEvent(evt *Event) {
 
 func (p *logrusLogger) Publish(evts ...interface{}) error {
 	for _, evt := range evts {
-		switch eType := evt.(type) {
+		switch t := evt.(type) {
 		case Event:
-			p.logEvent(&eType)
+			t.Fields = doCaller(p.hasCaller, p.prefixes, t.Fields...)
+			p.logEvent(&t)
 		case *Event:
-			p.logEvent(eType)
+			newEvent := *t
+			newEvent.Fields = doCaller(p.hasCaller, p.prefixes, newEvent.Fields...)
+			p.logEvent(&newEvent)
 		case Level:
-			p.options.level = eType
+			p.options.level = t
 		default:
 			return fmt.Errorf("unsupported event type: %s", reflect.TypeOf(evt).Name())
 		}
@@ -196,4 +203,14 @@ func (p *logrusLogger) Panic(kvs ...interface{}) {
 // Panicf panic
 func (p *logrusLogger) Panicf(msg string, kvs ...interface{}) {
 	p.Panic("msg", fmt.Sprintf(msg, kvs...))
+}
+
+func (p *logrusLogger) WithPrefix(kvs ...interface{}) Logger {
+	return &logrusLogger{
+		id:        uuid.NewString(),
+		options:   p.options,
+		hasCaller: p.hasCaller || containsCaller(kvs),
+		prefixes:  append(kvs, p.prefixes...),
+		logger:    p.logger,
+	}
 }

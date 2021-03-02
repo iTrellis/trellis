@@ -24,34 +24,22 @@ import (
 	"github.com/iTrellis/common/event"
 )
 
+// Publisher publish some informations
+type Publisher interface {
+	Log(Level, ...interface{})
+	Logf(Level, string, ...interface{})
+
+	WithPrefix(kvs ...interface{}) Publisher
+
+	SetLevel(lvl Level)
+
+	event.SubscriberGroup
+}
+
 // NewPublisher new a publisher
 func NewPublisher() Publisher {
 	return &publisher{
 		eventGroup: event.NewSubscriberGroup(),
-	}
-}
-
-// Caller fileds function
-type Caller func() interface{}
-
-func containsCaller(fileds []interface{}) bool {
-	for i := 0; i < len(fileds); i++ {
-		switch fileds[i].(type) {
-		case Caller, func() interface{}:
-			return true
-		}
-	}
-	return false
-}
-
-func bindCallers(fileds []interface{}) {
-	for i := 0; i < len(fileds); i++ {
-		switch fn := fileds[i].(type) {
-		case Caller:
-			fileds[i] = fn()
-		case func() interface{}:
-			fileds[i] = fn()
-		}
 	}
 }
 
@@ -61,89 +49,18 @@ type publisher struct {
 	eventGroup event.SubscriberGroup
 }
 
-// Debug 调试
-func (p *publisher) Debug(fields ...interface{}) {
-	p.publishLog(DebugLevel, fields...)
-}
-
-// Debugf 调试
-func (p *publisher) Debugf(msg string, fields ...interface{}) {
-	p.Debug(fmt.Sprintf(msg, fields...))
-}
-
-// Info 信息
-func (p *publisher) Info(fields ...interface{}) {
-	p.publishLog(InfoLevel, fields...)
-}
-
-// Infof 信息
-func (p *publisher) Infof(msg string, fields ...interface{}) {
-	p.Info(fmt.Sprintf(msg, fields...))
-}
-
-// Warn 警告
-func (p *publisher) Warn(fields ...interface{}) {
-	p.publishLog(WarnLevel, fields...)
-}
-
-// Warnf 警告
-func (p *publisher) Warnf(msg string, fields ...interface{}) {
-	p.Warn(fmt.Sprintf(msg, fields...))
-}
-
-// Error 错误
-func (p *publisher) Error(fields ...interface{}) {
-	p.publishLog(ErrorLevel, fields...)
-}
-
-// Errorf 错误
-func (p *publisher) Errorf(msg string, fields ...interface{}) {
-	p.Error(fmt.Sprintf(msg, fields...))
-}
-
-// Critical 严重的
-func (p *publisher) Critical(fields ...interface{}) {
-	p.publishLog(CriticalLevel, fields...)
-}
-
-// Criticalf 严重的
-func (p *publisher) Criticalf(msg string, fields ...interface{}) {
-	p.Critical(fmt.Sprintf(msg, fields...))
-}
-
-// Panic panic
-func (p *publisher) Panic(fields ...interface{}) {
-	p.publishLog(PanicLevel, fields...)
-}
-
-// Panicf panic
-func (p *publisher) Panicf(msg string, fields ...interface{}) {
-	p.Panic(fmt.Sprintf(msg, fields...))
-}
-
 // SetLevel set looger's level
 func (p *publisher) SetLevel(lvl Level) {
 	p.Publish(lvl)
 }
 
 // Log 打印
-func (p *publisher) Log(kvs ...interface{}) error {
-	p.publishLog(InfoLevel, kvs...)
-	return nil
+func (p *publisher) Log(lvl Level, kvs ...interface{}) {
+	p.publishLog(lvl, kvs...)
 }
 
-// With 异常
-func (p *publisher) With(params ...interface{}) Publisher {
-	if len(params) == 0 {
-		return p
-	}
-	newPrefixes := append(p.prefixes, params...)
-
-	return &publisher{
-		prefixes:   newPrefixes[:len(newPrefixes):len(newPrefixes)],
-		hasCaller:  p.hasCaller || containsCaller(newPrefixes),
-		eventGroup: p.eventGroup,
-	}
+func (p *publisher) Logf(lvl Level, msg string, kvs ...interface{}) {
+	p.publishLog(lvl, "msg", fmt.Sprintf(msg, kvs...))
 }
 
 // WithPrefix 加载前缀
@@ -163,16 +80,16 @@ func (p *publisher) publishLog(lvl Level, kvs ...interface{}) {
 	if len(kvs) == 0 {
 		return
 	}
-	prifixes := p.prefixes
+	fields := append(p.prefixes, kvs...)
 	if p.hasCaller {
-		if len(prifixes) != 0 {
-			bindCallers(prifixes)
+		if len(fields) != 0 {
+			bindCallers(fields)
 		}
 	}
 	p.Publish(&Event{
 		Time:   time.Now(),
 		Level:  lvl,
-		Fields: append(prifixes, kvs...),
+		Fields: fields,
 	})
 }
 

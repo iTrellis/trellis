@@ -18,9 +18,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package logger
 
 import (
-	"fmt"
-	"runtime"
-	"strings"
 	"time"
 
 	"github.com/iTrellis/common/event"
@@ -46,35 +43,4 @@ type Event struct {
 	Time   time.Time
 	Level  Level
 	Fields []interface{}
-}
-
-// Stack stores a stacktrace under the key "stacktrace".
-func Stack() interface{} {
-	var name, file string
-	var line int
-	var pc [16]uintptr
-
-	n := runtime.Callers(5, pc[:])
-	for _, pc := range pc[:n] {
-		fn := runtime.FuncForPC(pc)
-		if fn == nil {
-			continue
-		}
-		file, line = fn.FileLine(pc)
-		name = fn.Name()
-		if !strings.HasPrefix(name, "runtime.") {
-			break
-		}
-	}
-
-	var str string
-	switch {
-	case name != "":
-		str = fmt.Sprintf("%v:%v", name, line)
-	case file != "":
-		str = fmt.Sprintf("%v:%v", file, line)
-	default:
-		str = fmt.Sprintf("pc:%x", pc)
-	}
-	return str
 }

@@ -21,32 +21,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"runtime"
+	"strings"
 
 	kitlog "github.com/go-kit/kit/log"
 	"github.com/iTrellis/common/event"
 )
 
-// Publisher publish some informations
-type Publisher interface {
-	LogFarm
-
-	With(params ...interface{}) Publisher
-	WithPrefix(kvs ...interface{}) Publisher
-
-	event.SubscriberGroup
-}
-
 // Logger 日志对象
 type Logger interface {
-	LogFarm
-
-	event.Subscriber
-
 	SetLevel(lvl Level)
-}
 
-// LogFarm log functions
-type LogFarm interface {
+	WithPrefix(kvs ...interface{}) Logger
+
+	Log(keyvals ...interface{}) error
 	Debug(kvs ...interface{})
 	Debugf(msg string, kvs ...interface{})
 	Info(kvs ...interface{})
@@ -60,7 +48,7 @@ type LogFarm interface {
 	Panic(kvs ...interface{})
 	Panicf(msg string, kvs ...interface{})
 
-	Log(keyvals ...interface{}) error
+	event.Subscriber
 }
 
 func genLogs(evt *Event) []interface{} {
@@ -100,61 +88,149 @@ func toString(v interface{}) string {
 }
 
 // Debug 调试
-func Debug(l LogFarm, fields ...interface{}) {
+func Debug(l Logger, fields ...interface{}) {
 	l.Debug(fields...)
 }
 
 // Debugf 调试
-func Debugf(l LogFarm, msg string, fields ...interface{}) {
+func Debugf(l Logger, msg string, fields ...interface{}) {
 	l.Debugf(msg, fields...)
 }
 
 // Info 信息
-func Info(l LogFarm, fields ...interface{}) {
+func Info(l Logger, fields ...interface{}) {
 	l.Info(fields...)
 }
 
 // Infof 信息
-func Infof(l LogFarm, msg string, fields ...interface{}) {
+func Infof(l Logger, msg string, fields ...interface{}) {
 	l.Infof(msg, fields...)
 }
 
 // Error 错误
-func Error(l LogFarm, fields ...interface{}) {
+func Error(l Logger, fields ...interface{}) {
 	l.Error(fields...)
 }
 
 // Errorf 错误
-func Errorf(l LogFarm, msg string, fields ...interface{}) {
+func Errorf(l Logger, msg string, fields ...interface{}) {
 	l.Errorf(msg, fields...)
 }
 
 // Warn 警告
-func Warn(l LogFarm, fields ...interface{}) {
+func Warn(l Logger, fields ...interface{}) {
 	l.Warn(fields...)
 }
 
 // Warnf 警告
-func Warnf(l LogFarm, msg string, fields ...interface{}) {
+func Warnf(l Logger, msg string, fields ...interface{}) {
 	l.Warnf(msg, fields...)
 }
 
 // Critical 异常
-func Critical(l LogFarm, fields ...interface{}) {
+func Critical(l Logger, fields ...interface{}) {
 	l.Critical(fields...)
 }
 
 // Criticalf 异常
-func Criticalf(l LogFarm, msg string, fields ...interface{}) {
+func Criticalf(l Logger, msg string, fields ...interface{}) {
 	l.Criticalf(msg, fields...)
 }
 
 // Panic 异常
-func Panic(l LogFarm, fields ...interface{}) {
+func Panic(l Logger, fields ...interface{}) {
 	l.Panic(fields...)
 }
 
 // Panicf 异常
-func Panicf(l LogFarm, msg string, fields ...interface{}) {
+func Panicf(l Logger, msg string, fields ...interface{}) {
 	l.Panicf(msg, fields...)
+}
+
+// RuntimeCaller stores a stacktrace under the key "stacktrace".
+func RuntimeCaller(skip int) func() interface{} {
+	return func() interface{} {
+		_, file, line, ok := runtime.Caller(skip)
+		if !ok {
+			file = "<???>"
+			line = 1
+		} else {
+			slash := strings.LastIndex(file, "/")
+			file = file[slash+1:]
+		}
+		return fmt.Sprintf("%s:%d", file, line)
+	}
+}
+
+func RuntimeCallers(skip int) func() interface{} {
+
+	return func() interface{} {
+		var name, file string
+		var line int
+		var pc [16]uintptr
+
+		n := runtime.Callers(skip, pc[:])
+		for _, pc := range pc[:n] {
+			fn := runtime.FuncForPC(pc)
+			if fn == nil {
+				continue
+			}
+			file, line = fn.FileLine(pc)
+
+			slash := strings.LastIndex(file, "/")
+			file = file[slash+1:]
+
+			name = fn.Name()
+
+			if !strings.HasPrefix(name, "runtime.") {
+				slash := strings.LastIndex(name, "/")
+				name = name[slash+1:]
+				break
+			}
+		}
+
+		var str string
+		switch {
+		case name != "":
+			str = fmt.Sprintf("%v:%v", name, line)
+		case file != "":
+			str = fmt.Sprintf("%v:%v", file, line)
+		default:
+			str = fmt.Sprintf("pc:%x", pc)
+		}
+		return str
+	}
+}
+
+// Caller fileds function
+type Caller func() interface{}
+
+func containsCaller(fileds []interface{}) bool {
+	for i := 0; i < len(fileds); i++ {
+		switch fileds[i].(type) {
+		case Caller, func() interface{}:
+			return true
+		}
+	}
+	return false
+}
+
+func bindCallers(fileds []interface{}) {
+	for i := 0; i < len(fileds); i++ {
+		switch fn := fileds[i].(type) {
+		case Caller:
+			fileds[i] = fn()
+		case func() interface{}:
+			fileds[i] = fn()
+		}
+	}
+}
+
+func doCaller(hasCaller bool, prefixes []interface{}, keyvals ...interface{}) []interface{} {
+	kvs := append(prefixes, keyvals...)
+	if !hasCaller {
+		return kvs
+	}
+	bindCallers(kvs)
+	return kvs
 }

@@ -21,6 +21,8 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -93,4 +95,16 @@ func HostPort(addr string, port interface{}) string {
 	}
 
 	return fmt.Sprintf("%s:%v", host, port)
+}
+
+func MatchHostSuffix(suffix string) func(*url.URL) bool {
+	return func(uri *url.URL) bool {
+		return strings.HasSuffix(strings.ToLower(uri.Host), suffix)
+	}
+}
+
+func MatchPattern(pattern *regexp.Regexp) func(*url.URL) bool {
+	return func(uri *url.URL) bool {
+		return pattern.MatchString(strings.ToLower(uri.String()))
+	}
 }

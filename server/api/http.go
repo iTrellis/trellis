@@ -28,6 +28,7 @@ import (
 	"github.com/iTrellis/trellis/cmd"
 	"github.com/iTrellis/trellis/internal/addr"
 	"github.com/iTrellis/trellis/server"
+	"github.com/iTrellis/trellis/server/gin_middlewares"
 	"github.com/iTrellis/trellis/service"
 	"github.com/iTrellis/trellis/service/component"
 	"github.com/iTrellis/trellis/service/message"
@@ -63,6 +64,7 @@ func RegistCustomHandlers(name, path, method string, fn gin.HandlerFunc) {
 }
 
 var useFuncs = make(map[string]gin.HandlerFunc)
+var indexGinFuncs []string
 
 // RegistUseFuncs 注册
 func RegistUseFuncs(name string, fn gin.HandlerFunc) error {
@@ -71,6 +73,7 @@ func RegistUseFuncs(name string, fn gin.HandlerFunc) error {
 		return fmt.Errorf("use funcs (%s) is already exist", name)
 	}
 	useFuncs[name] = fn
+	indexGinFuncs = append(indexGinFuncs, name)
 	return nil
 }
 
@@ -171,24 +174,30 @@ func (p *httpServer) init() error {
 
 	engine := gin.New()
 
-	engine.Use(gin.Recovery())
-
 	httpConf := p.options.Config.GetValuesConfig("http")
-	server.LoadCors(engine, httpConf.GetValuesConfig("cors"))
-	server.LoadPprof(engine, httpConf.GetValuesConfig("pprof"))
 
-	for _, fn := range useFuncs {
-		engine.Use(fn)
+	ginHanlders := []gin.HandlerFunc{
+		gin_middlewares.NewRequestID(),
+		gin.Recovery(),
+		StatFunc(p.options.Logger),
+		gin_middlewares.LoadCors(httpConf.GetValuesConfig("cors")),
+	}
+
+	for _, name := range indexGinFuncs {
+		ginHanlders = append(ginHanlders, useFuncs[name])
+	}
+	engine.Use(ginHanlders...)
+
+	gin_middlewares.LoadPprof(engine, httpConf.GetValuesConfig("pprof"))
+
+	urlPath := httpConf.GetString("postapi")
+	if len(urlPath) != 0 {
+		engine.POST(urlPath, p.serve)
 	}
 
 	for _, v := range handlers {
 		p.options.Logger.Info("msg", "start_customer_handler", "name", v.Name, "path", v.URLPath, "method", v.Method)
 		engine.Handle(v.Method, v.URLPath, v.Func)
-	}
-
-	urlPath := httpConf.GetString("postapi")
-	if len(urlPath) != 0 {
-		engine.POST(urlPath, p.serve)
 	}
 
 	p.forwardHeaders = httpConf.GetStringList("forward.headers")
@@ -248,33 +257,27 @@ func (p *httpServer) Stop() error {
 
 func (p *httpServer) serve(gCtx *gin.Context) {
 
-	apiName := gCtx.Request.Header.Get("X-API")
+	apiName := gCtx.Request.Header.Get(service.HeaderXAPI)
 	clientIP := addr.GetClientIP(gCtx.Request)
 
-	traceID := gCtx.GetHeader(message.XAPITraceID)
-	if traceID == "" {
-		traceID = uuid.NewString()
+	reqID := gCtx.GetHeader(service.HeaderXRequestID)
+	if reqID == "" {
+		reqID = uuid.NewString()
+		gCtx.Request.Header.Set(service.HeaderXRequestID, reqID)
 	}
 
 	r := &Response{
-		TraceID: traceID,
+		TraceID: reqID,
 		TraceIP: addr.ExternalIPs()[0],
 	}
 
-	p.options.Logger.Info("msg", "request", "trace_id", traceID, "api_name", apiName, "client_ip", clientIP)
-	timeNow := time.Now().UnixNano()
-	defer func() {
-		endNow := time.Now().UnixNano()
-		p.options.Logger.Info("msg", "response", "trace_id", traceID, "api_name", apiName, "client_ip", clientIP,
-			"request_time", timeNow, "end_time", endNow, "cost_time", endNow-timeNow)
-	}()
 	api, ok := p.getAPI(apiName)
 	if !ok {
 		r.Code = 11
 		r.Msg = "api not found"
 		r.Namespace = "trellis"
 		gCtx.JSON(http.StatusBadRequest, r)
-		p.options.Logger.Error("msg", "api_not_found", "trace_id", traceID, "api_name", apiName, "client_ip", clientIP)
+		p.options.Logger.Error("msg", "api_not_found", "request_id", reqID, "api_name", apiName, "client_ip", clientIP)
 		return
 	}
 
@@ -284,7 +287,7 @@ func (p *httpServer) serve(gCtx *gin.Context) {
 		r.Msg = fmt.Sprintf("bad request: %s", err.Error())
 		r.Namespace = "trellis"
 		gCtx.JSON(http.StatusBadRequest, r)
-		p.options.Logger.Error("msg", "get_raw_data", "trace_id", r.TraceID, "api_name", apiName, "client_ip", clientIP, "err", err)
+		p.options.Logger.Error("msg", "get_raw_data", "request_id", r.TraceID, "api_name", apiName, "client_ip", clientIP, "err", err)
 		return
 	}
 
@@ -293,8 +296,8 @@ func (p *httpServer) serve(gCtx *gin.Context) {
 		Body:   body,
 	}
 
-	payload.Set(message.XClientIP, clientIP)
-	payload.Set(message.XAPITraceID, traceID)
+	payload.Set(service.HeaderXClientIP, clientIP)
+	payload.Set(service.HeaderXRequestID, reqID)
 	for _, h := range p.forwardHeaders {
 		payload.Set(h, gCtx.GetHeader(h))
 	}
@@ -338,7 +341,7 @@ func (p *httpServer) serve(gCtx *gin.Context) {
 		r.Namespace = "trellis"
 	}
 
-	p.options.Logger.Error("msg", "call_server_failed", "trace_id", r.TraceID, "api_name", apiName, "client_ip", clientIP, "err", r)
+	p.options.Logger.Error("msg", "call_server_failed", "request_id", r.TraceID, "api_name", apiName, "client_ip", clientIP, "err", r)
 	gCtx.JSON(200, r)
 }
 

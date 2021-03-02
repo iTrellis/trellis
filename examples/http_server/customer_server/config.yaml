@@ -1,24 +1,24 @@
 project:
-    services:
-        -
-            domain: custom
-            name: component_handler
-            version: v1
-        -
-            name: trellis-postapi
-            version: v1
-            options:
-                http:
-                    postapi: "/v1"
-                    address: ":8080"
-                gin_mode: debug
-                apis:
-                    type: file ## default file | mysql
-                    file:
-                        custom_component_handler:
-                            api: custom.ping
-                            service_domain: custom # default : trellis
-                            service_name: component_handler
-                            service_version: v1
-                            topic: ping
+  services:
+    custom-component_handler-v1:
+      domain: custom
+      name: component_handler
+      version: v1
+    trellis-postapi:
+      name: trellis-postapi
+      version: v1
+      options:
+        http:
+          postapi: "/v1"
+          address: ":8080"
+        gin_mode: debug
+        apis:
+          type: file ## default file | mysql
+          file:
+            custom_component_handler:
+              api: custom.ping
+              service_domain: custom # default : trellis
+              service_name: component_handler
+              service_version: v1
+              topic: ping
 

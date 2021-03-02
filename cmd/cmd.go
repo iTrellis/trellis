@@ -25,17 +25,17 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/iTrellis/common/builder"
-	"github.com/iTrellis/common/logger"
-	"github.com/iTrellis/config"
 	"github.com/iTrellis/trellis/configure"
 	"github.com/iTrellis/trellis/routes"
 	"github.com/iTrellis/trellis/service"
 	"github.com/iTrellis/trellis/service/component"
 	"github.com/iTrellis/trellis/service/registry"
 	"github.com/iTrellis/trellis/version"
-	"github.com/sirupsen/logrus"
 
+	"github.com/iTrellis/common/builder"
+	"github.com/iTrellis/common/logger"
+	"github.com/iTrellis/config"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
@@ -59,7 +59,7 @@ type cmd struct {
 
 	app *cli.App
 
-	config configure.Configure
+	config config.Config
 
 	routesManager routes.Manager
 
@@ -71,8 +71,20 @@ func (p *cmd) Options() Options {
 }
 
 func (p *cmd) Start() error {
+	if p.config == nil {
+		return nil
+	}
 
-	for _, regConfig := range p.config.Project.Registries {
+	registriesConfig := p.config.GetValuesConfig("project.registries")
+
+	for _, rKey := range registriesConfig.GetKeys() {
+
+		regConfig := &configure.Registry{}
+
+		if err := registriesConfig.ToObject(rKey, regConfig); err != nil {
+			return err
+		}
+
 		fn, ok := DefaultNewRegistryFuncs[regConfig.Type]
 		if !ok {
 			return errors.New("unsupported registry type")
@@ -84,7 +96,7 @@ func (p *cmd) Start() error {
 			registry.Endpoints(regConfig.Endpoints),
 			registry.Timeout(regConfig.Timeout),
 			registry.Context(context.Background()),
-			registry.Logger(logger.WithPrefix(p.logger, "registry", regConfig.Name)),
+			registry.Logger(p.logger.WithPrefix("registry", regConfig.Name)),
 		)
 
 		p.logger.Debug("new_registry", regConfig.Name, "address", regConfig.ServerAddr)
@@ -107,19 +119,27 @@ func (p *cmd) Start() error {
 				registry.WatchService(w.Service),
 				registry.WatchContext(w.Options),
 				registry.WatchLogger(
-					logger.WithPrefix(p.logger, "registry", regConfig.Name, "watcher", w.Service.FullRegistryPath())),
+					p.logger.WithPrefix("registry", regConfig.Name, "watcher", w.Service.FullRegistryPath())),
 			)
 		}
 	}
 
-	for _, serviceConf := range p.config.Project.Services {
+	servicesConfig := p.config.GetValuesConfig("project.services")
+
+	for _, sKey := range servicesConfig.GetKeys() {
+
+		serviceConf := &configure.Service{}
+
+		if err := servicesConfig.ToObject(sKey, serviceConf); err != nil {
+			return err
+		}
 
 		p.logger.Debug("new_component", serviceConf.Service.TrellisPath())
 		if _, err := p.routesManager.CompManager().NewComponent(
 			&serviceConf.Service,
 			component.Caller(p.routesManager),
 			component.Config(serviceConf.Options.ToConfig()),
-			component.Logger(logger.WithPrefix(p.logger, "component", serviceConf.Service.TrellisPath())),
+			component.Logger(p.logger.WithPrefix("component", serviceConf.Service.TrellisPath())),
 		); err != nil {
 			p.logger.Error("new_component", serviceConf.Service.TrellisPath(), "err", err)
 			return err
@@ -157,52 +177,67 @@ func (p *cmd) Init(opts ...Option) (err error) {
 		o(options)
 	}
 
-	if p.config.Project.Logger == nil {
-		p.logger = logger.NewStdLogger(logger.STDLevel(logger.InfoLevel), logger.STDWriter(os.Stderr))
-	} else {
-		switch p.config.Project.Logger.Type {
-		case "file":
-			p.logger, err = logger.NewFileLogger()
-			if err != nil {
-				return err
-			}
-		case "logrus":
-			p.logger = logger.NewLogrusLogger(logrus.New(), logger.LogrusLevel(p.config.Project.Logger.Level))
-		case "std":
-			fallthrough
-		default:
-			p.logger = logger.NewStdLogger(logger.STDLevel(p.config.Project.Logger.Level), logger.STDWriter(os.Stderr))
-		}
-	}
-
-	p.routesManager = routes.NewManager(
-		routes.CompManager(DefaultCompManager),
-		routes.WithRouter(routes.NewRoutes(logger.WithPrefix(p.logger, "component", "routes"))),
-		routes.Logger(logger.WithPrefix(p.logger, "component", "routes_manager")),
-	)
-
-	if options.config == nil && options.configFile == "" {
-		return
-	}
-	p.logger.Info("msg", "initial", "config_file", options.configFile, "configs", options.config)
-
 	if options.configFile != "" {
 		p.options.configFile = options.configFile
 
-		reader, err := config.NewSuffixReader(config.ReaderOptionFilename(p.options.configFile))
+		c, err := config.NewConfig(p.options.configFile)
 		if err != nil {
 			return err
 		}
 
-		err = reader.Read(&p.config)
-		if err != nil {
-			return err
-		}
+		p.config = c
 	} else if options.config != nil {
 		p.options.config = options.config
-		p.config = *p.options.config
+
+		c, err := config.NewConfigOptions(config.OptionStruct(config.ReaderTypeYAML, p.options.config))
+		if err != nil {
+			return err
+		}
+
+		p.config = c
 	}
 
+	if p.config == nil {
+		return nil
+	}
+
+	loggerConfig := &configure.Logger{}
+
+	if err := p.config.ToObject("project.logger", loggerConfig); err != nil {
+		return err
+	}
+
+	if loggerConfig.Level == nil {
+		loggerConfig.Level = &configure.DefaultLevel
+	}
+
+	if loggerConfig.StackSkip == nil {
+		loggerConfig.StackSkip = &configure.DefaultStackSkip
+	}
+
+	switch loggerConfig.Type {
+	case "file":
+		p.logger, err = logger.NewFileLogger()
+		if err != nil {
+			return err
+		}
+	case "logrus":
+		p.logger = logger.NewLogrusLogger(logrus.New(), logger.LogrusLevel(*loggerConfig.Level))
+	case "", "std":
+		fallthrough
+	default:
+		p.logger = logger.NewStdLogger(logger.STDWriter(os.Stderr), logger.STDLevel(*loggerConfig.Level))
+	}
+
+	p.logger = p.logger.WithPrefix("caller", logger.RuntimeCaller(*loggerConfig.StackSkip))
+
+	p.logger.Debug("msg", "initial", "config_file", options.configFile, "configs", options.config)
+
+	p.routesManager = routes.NewManager(
+		routes.CompManager(DefaultCompManager),
+		routes.WithRouter(routes.NewRoutes(p.logger.WithPrefix("component", "routes"))),
+		routes.Logger(p.logger.WithPrefix("component", "routes_manager")),
+	)
 	return
 }
 

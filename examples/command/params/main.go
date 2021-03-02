@@ -22,6 +22,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/iTrellis/common/logger"
 	"github.com/iTrellis/trellis/cmd"
 	"github.com/iTrellis/trellis/configure"
 	"github.com/iTrellis/trellis/service"
@@ -55,10 +56,13 @@ func (p *command) Route(topic string) component.Handler {
 }
 
 func main() {
+	lvl := logger.Level(4)
 	cs := &configure.Service{Service: s}
-	c, err := cmd.New(cmd.WithConfig(&configure.Configure{Project: configure.Project{
-		Services: []*configure.Service{cs},
-	}}))
+	c, err := cmd.New(cmd.WithConfig(
+		&configure.Configure{Project: configure.Project{
+			Logger:   &configure.Logger{Level: &lvl},
+			Services: map[string]*configure.Service{cs.TrellisPath(): cs},
+		}}))
 
 	if err != nil {
 		log.Fatalln(err)
@@ -67,5 +71,4 @@ func main() {
 	app := c.App()
 
 	app.Run(os.Args)
-
 }

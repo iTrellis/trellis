@@ -88,13 +88,6 @@ func FileMoveFileType(typ MoveFileType) FileOption {
 	}
 }
 
-// FilePublisher set publisher
-func FilePublisher(pub Publisher) FileOption {
-	return func(c *FileOptions) {
-		c.publisher = pub
-	}
-}
-
 // LogrusOption 操作配置函数
 type LogrusOption func(*LogrusOptions)
 

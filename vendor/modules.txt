@@ -50,7 +50,7 @@ github.com/golang/protobuf/ptypes/timestamp
 github.com/golang/snappy
 # github.com/google/uuid v1.2.0
 github.com/google/uuid
-# github.com/iTrellis/common v0.21.4
+# github.com/iTrellis/common v0.21.6
 github.com/iTrellis/common/builder
 github.com/iTrellis/common/data-structures/stack
 github.com/iTrellis/common/encryption/binary-formats
@@ -61,11 +61,11 @@ github.com/iTrellis/common/files
 github.com/iTrellis/common/formats
 github.com/iTrellis/common/logger
 github.com/iTrellis/common/testutils
-# github.com/iTrellis/config v0.21.3
+# github.com/iTrellis/config v0.21.4
 github.com/iTrellis/config
-# github.com/iTrellis/node v0.21.2
+# github.com/iTrellis/node v0.21.3
 github.com/iTrellis/node
-# github.com/iTrellis/xorm_ext v0.21.3
+# github.com/iTrellis/xorm_ext v0.21.4
 github.com/iTrellis/xorm_ext
 # github.com/json-iterator/go v1.1.9
 github.com/json-iterator/go

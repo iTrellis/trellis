@@ -1,51 +1,21 @@
-/*
-Copyright © 2020 Henry Huang <hhh@rutcode.com>
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program. If not, see <http://www.gnu.org/licenses/>.
-*/
-
-package server
+package gin_middlewares
 
 import (
-	"runtime"
 	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
-	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	"github.com/iTrellis/config"
+	"github.com/iTrellis/trellis/service"
 )
 
-func LoadPprof(engine *gin.Engine, conf config.Config) {
+func LoadCors(conf config.Config) gin.HandlerFunc {
 
-	if conf == nil || engine == nil {
-		return
-	}
-
-	if !conf.GetBoolean("enabled", false) {
-		return
-	}
-
-	pprof.Register(engine)
-	runtime.SetBlockProfileRate(int(conf.GetInt("block-profile-rate", 0)))
-}
-
-func LoadCors(engine *gin.Engine, conf config.Config) {
-
-	if engine == nil || conf == nil {
-		return
+	if conf == nil {
+		return func(c *gin.Context) {
+			c.Next()
+		}
 	}
 
 	var corsConf cors.Config
@@ -66,13 +36,14 @@ func LoadCors(engine *gin.Engine, conf config.Config) {
 			MaxAge:           conf.GetTimeDuration("max-age", time.Hour*12),
 		}
 
-		corsConf.AllowOriginFunc = WildcardMatchFunc(corsConf.AllowOrigins)
+		corsConf.AllowOriginFunc = wildcardMatchFunc(corsConf.AllowOrigins)
 	}
 
 	corsConf.AllowHeaders = append(corsConf.AllowHeaders,
-		"X-Api", "Client-IP", "Origin", "Content-Length", "Content-Type", "Referrer")
+		service.HeaderXAPI, service.HeaderXClientIP, service.HeaderOrigin,
+		service.HeaderContentLength, service.HeaderContentType, service.HeaderReferer)
 
-	engine.Use(cors.New(corsConf))
+	return cors.New(corsConf)
 }
 
 type wildcard struct {
@@ -80,7 +51,7 @@ type wildcard struct {
 	suffix string
 }
 
-func WildcardMatchFunc(allowedOrigins []string) func(string) bool {
+func wildcardMatchFunc(allowedOrigins []string) func(string) bool {
 
 	allowedWOrigins := []wildcard{}
 	allowedOriginsAll := false

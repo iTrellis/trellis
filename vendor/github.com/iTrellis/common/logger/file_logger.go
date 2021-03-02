@@ -51,7 +51,10 @@ type fileLogger struct {
 
 	ticker *time.Ticker
 
-	prefixes []interface{}
+	hasCaller bool
+	prefixes  []interface{}
+
+	originFileLogger *fileLogger
 }
 
 // FileOptions file options
@@ -66,8 +69,6 @@ type FileOptions struct {
 	moveFileType MoveFileType
 	// 最大保留日志个数，如果为0则全部保留
 	maxBackupFile int
-
-	publisher Publisher
 }
 
 // MoveFileType move file type
@@ -92,13 +93,6 @@ func NewFileLogger(opts ...FileOption) (Logger, error) {
 	err := fw.init(opts...)
 	if err != nil {
 		return nil, err
-	}
-
-	if fw.options.publisher != nil {
-		_, err := fw.options.publisher.Subscriber(fw)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return fw, err
@@ -174,7 +168,7 @@ func (p *fileLogger) looperLog() {
 		select {
 		case log := <-p.logChan:
 			if log.Level >= p.options.level {
-				_, _ = p.innerLog(log)
+				_, _ = p.logEvent(log)
 			}
 		case t := <-p.ticker.C:
 			flag := 0
@@ -191,6 +185,7 @@ func (p *fileLogger) looperLog() {
 			}
 			_ = p.judgeMoveFile()
 		case <-p.stopChan:
+			close(p.stopChan)
 			p.ticker.Stop()
 			return
 		}
@@ -299,7 +294,7 @@ func (p *fileLogger) genLogs(evt *Event) string {
 
 	return fmt.Sprintf("%s%s", strings.Join(logs, p.options.separator), gEnd)
 }
-func (p *fileLogger) innerLog(evt *Event) (n int, err error) {
+func (p *fileLogger) logEvent(evt *Event) (n int, err error) {
 
 	if err = p.judgeMoveFile(); err != nil {
 		return
@@ -334,9 +329,14 @@ func (p *fileLogger) GetID() string {
 }
 
 func (p *fileLogger) Stop() {
+	if p.originFileLogger != nil {
+		p.originFileLogger.Stop()
+		return
+	}
+	if p.stopChan == nil {
+		return
+	}
 	p.stopChan <- true
-
-	p.options.publisher = nil
 
 	close(p.logChan)
 }
@@ -345,11 +345,25 @@ func (p *fileLogger) Publish(evts ...interface{}) error {
 	for _, evt := range evts {
 		switch t := evt.(type) {
 		case Event:
+			t.Fields = doCaller(p.hasCaller, p.prefixes, t.Fields...)
+			if p.originFileLogger != nil {
+				p.originFileLogger.logChan <- &t
+				continue
+			}
 			p.logChan <- &t
 		case *Event:
-			evt := *t
-			p.logChan <- &evt
+			newEvent := *t
+			newEvent.Fields = doCaller(p.hasCaller, p.prefixes, newEvent.Fields...)
+			if p.originFileLogger != nil {
+				p.originFileLogger.logChan <- &newEvent
+				continue
+			}
+			p.logChan <- &newEvent
 		case Level:
+			if p.originFileLogger != nil {
+				p.originFileLogger.options.level = t
+				continue
+			}
 			p.options.level = t
 		default:
 			return fmt.Errorf("unsupported event type: %+v", reflect.TypeOf(evt))
@@ -359,11 +373,16 @@ func (p *fileLogger) Publish(evts ...interface{}) error {
 }
 
 func (p *fileLogger) pubLog(level Level, kvs ...interface{}) {
-	p.Publish(&Event{
+	evt := &Event{
 		Time:   time.Now(),
 		Level:  level,
 		Fields: kvs,
-	})
+	}
+	if p.originFileLogger != nil {
+		p.originFileLogger.Publish(evt)
+		return
+	}
+	p.Publish(evt)
 }
 
 // Debug 调试
@@ -424,4 +443,20 @@ func (p *fileLogger) Panic(kvs ...interface{}) {
 // Panicf panic
 func (p *fileLogger) Panicf(msg string, kvs ...interface{}) {
 	p.Panic("msg", fmt.Sprintf(msg, kvs...))
+}
+
+func (p *fileLogger) WithPrefix(kvs ...interface{}) Logger {
+	fLog := &fileLogger{
+		id:        uuid.NewString(),
+		options:   p.options,
+		hasCaller: containsCaller(kvs),
+		prefixes:  append(kvs, p.prefixes...),
+	}
+
+	fLog.originFileLogger = p.originFileLogger
+	if fLog.originFileLogger == nil {
+		fLog.originFileLogger = p
+	}
+
+	return fLog
 }
