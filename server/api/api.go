@@ -17,7 +17,9 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package api
 
-import "time"
+import (
+	"github.com/google/uuid"
+)
 
 // API api struct
 type API struct {
@@ -38,7 +40,8 @@ func (*API) TableName() string {
 
 func (p *httpServer) syncAPIs(domain string) {
 	for {
-		p.options.Logger.Info("start_sync_apis", time.Now(), "domain", domain)
+		syncID := uuid.NewString()
+		p.options.Logger.Info("msg", "start_sync_apis", "sync", syncID, "domain", domain)
 
 		parmas := map[string]interface{}{"`status`": "normal"}
 
@@ -47,7 +50,9 @@ func (p *httpServer) syncAPIs(domain string) {
 		}
 		var apis []*API
 		if err := p.apiEngine.Where(parmas).Find(&apis); err != nil {
-			p.options.Logger.Error("sync_apis_failed", "err", err.Error())
+			p.options.Logger.Error("msg", "sync_apis_failed", "sync", syncID, "err", err.Error())
+			// todo judge err to crash
+			<-p.ticker.C
 			continue
 		}
 
@@ -61,7 +66,7 @@ func (p *httpServer) syncAPIs(domain string) {
 		p.syncer.Lock()
 		p.apis = mapAPIs
 		p.syncer.Unlock()
-		p.options.Logger.Info("end_sync_apis", time.Now())
+		p.options.Logger.Info("msg", "end_sync_apis", "sync", syncID, "domain", domain)
 
 		<-p.ticker.C
 	}
