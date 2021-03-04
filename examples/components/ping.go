@@ -19,6 +19,7 @@ package components
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/iTrellis/trellis/service"
 	"github.com/iTrellis/trellis/service/component"
@@ -37,23 +38,18 @@ func NewPing(opts ...component.Option) (component.Component, error) {
 	return c, nil
 }
 
-func (p *ping) Route(topic string) component.Handler {
-	switch topic {
+func (p *ping) Route(msg message.Message) (interface{}, error) {
+	switch msg.Topic() {
 	case "ping":
-		return func(_ message.Message) (interface{}, error) {
-			return p.opts.Caller.CallComponent(context.Background(),
-				message.NewMessage(
-					message.Service(service.Service{Name: "component_pong", Version: "v1", Topic: "ping"}),
-				))
-		}
+		return p.opts.Caller.CallComponent(context.Background(),
+			message.NewMessage(
+				message.Service(service.Service{Name: "component_pong", Version: "v1", Topic: "ping"}),
+			))
 
 	case "etcd_ping":
-		return func(_ message.Message) (interface{}, error) {
-			// p.opts.Router.GetNodes()
-			return nil, nil
-		}
+		return nil, nil
 	}
-	return nil
+	return nil, fmt.Errorf("unknown topic")
 }
 
 func (p *ping) Start() error {

@@ -95,8 +95,8 @@ func (p *Service) Stop() error {
 }
 
 // Route 路由
-func (p *Service) Route(string) component.Handler {
-	return nil
+func (p *Service) Route(_ message.Message) (interface{}, error) {
+	return nil, nil
 }
 
 // Call 路由

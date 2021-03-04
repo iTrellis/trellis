@@ -25,6 +25,7 @@ import (
 	"github.com/iTrellis/trellis/server/gin_middlewares"
 	"github.com/iTrellis/trellis/service"
 	"github.com/iTrellis/trellis/service/component"
+	"github.com/iTrellis/trellis/service/message"
 )
 
 func init() {
@@ -66,7 +67,14 @@ func (p *Handler) init() error {
 
 	httpConf := p.options.Config.GetValuesConfig("http")
 
-	engine.Use(gin_middlewares.LoadCors(httpConf.GetValuesConfig("cors")))
+	ginHanlders := []gin.HandlerFunc{
+		gin_middlewares.LoadCors(httpConf.GetValuesConfig("cors")),
+	}
+
+	for _, name := range gin_middlewares.IndexGinFuncs {
+		ginHanlders = append(ginHanlders, gin_middlewares.UseFuncs[name])
+	}
+	engine.Use(ginHanlders...)
 
 	staticPath := httpConf.GetString("static", "/")
 	rootPath := httpConf.GetString("root", "./static")
@@ -79,8 +87,8 @@ func (p *Handler) init() error {
 	return nil
 }
 
-func (*Handler) Route(string) component.Handler {
-	return nil
+func (*Handler) Route(message.Message) (interface{}, error) {
+	return nil, nil
 }
 
 func (p *Handler) Start() error {

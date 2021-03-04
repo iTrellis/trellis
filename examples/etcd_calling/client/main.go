@@ -61,13 +61,11 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	hf := cpt.Route("etcd_ping")
-	if hf == nil {
-		panic("not found handler function")
-	}
+	msg := message.NewMessage()
+	msg.SetTopic("etcd_ping")
 	for i := 0; i < 60; i++ {
 		time.Sleep(time.Second)
-		resp, err := hf(message.NewMessage())
+		resp, err := cpt.Route(msg)
 		if err != nil {
 			panic(err)
 		}

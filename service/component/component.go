@@ -37,7 +37,7 @@ type Middleware func(Handler) Handler
 type Component interface {
 	service.LifeCycle
 
-	Route(topic string) Handler
+	Route(msg message.Message) (interface{}, error)
 }
 
 // Describe description of component

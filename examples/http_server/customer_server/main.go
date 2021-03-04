@@ -81,14 +81,12 @@ type compHandler struct {
 	options  component.Options
 }
 
-func (p *compHandler) Route(topic string) component.Handler {
-	switch topic {
+func (p *compHandler) Route(msg message.Message) (interface{}, error) {
+	switch msg.Topic() {
 	case "ping":
-		return func(_ message.Message) (interface{}, error) {
-			return p.Response, nil
-		}
+		return p.Response, nil
 	}
-	return nil
+	return nil, nil
 }
 
 func (p *compHandler) Start() error {

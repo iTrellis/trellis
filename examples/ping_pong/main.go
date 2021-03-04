@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/iTrellis/trellis/service/message"
+
 	"github.com/iTrellis/trellis/cmd"
 	"github.com/iTrellis/trellis/examples/components"
 	"github.com/iTrellis/trellis/service"
@@ -52,12 +54,9 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-
-	hf := cpt.Route("ping")
-	if hf == nil {
-		panic("not found handler function")
-	}
-	resp, err := hf(nil)
+	msg := message.NewMessage()
+	msg.SetTopic("ping")
+	resp, err := cpt.Route(msg)
 	if err != nil {
 		log.Fatalln(err)
 	}

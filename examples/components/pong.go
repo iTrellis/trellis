@@ -18,6 +18,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package components
 
 import (
+	"fmt"
+
 	"github.com/iTrellis/trellis/cmd"
 	"github.com/iTrellis/trellis/service"
 	"github.com/iTrellis/trellis/service/component"
@@ -35,14 +37,12 @@ func NewPong(opts ...component.Option) (component.Component, error) {
 	return &pong{}, nil
 }
 
-func (p *pong) Route(topic string) component.Handler {
-	switch topic {
+func (p *pong) Route(msg message.Message) (interface{}, error) {
+	switch msg.Topic() {
 	case "ping":
-		return func(_ message.Message) (interface{}, error) {
-			return "pong", nil
-		}
+		return "pong", nil
 	}
-	return nil
+	return nil, fmt.Errorf("unknown topic")
 }
 
 func (p *pong) Start() error {

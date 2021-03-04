@@ -141,7 +141,7 @@ func (p *cmd) Start() error {
 			component.Config(serviceConf.Options.ToConfig()),
 			component.Logger(p.logger.WithPrefix("component", serviceConf.Service.TrellisPath())),
 		); err != nil {
-			p.logger.Error("new_component", serviceConf.Service.TrellisPath(), "err", err)
+			p.logger.Error("new_component", serviceConf.Service.TrellisPath(), "err", err.Error())
 			return err
 		}
 

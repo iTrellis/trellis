@@ -25,6 +25,7 @@ import (
 	"github.com/iTrellis/trellis/cmd"
 	"github.com/iTrellis/trellis/service"
 	"github.com/iTrellis/trellis/service/component"
+	"github.com/iTrellis/trellis/service/message"
 )
 
 // var s = service.Service{Name: "command_example", Version: "v1"}
@@ -50,8 +51,8 @@ func (p *command) Stop() error {
 	return nil
 }
 
-func (p *command) Route(topic string) component.Handler {
-	return nil
+func (p *command) Route(message.Message) (interface{}, error) {
+	return nil, nil
 }
 
 func main() {

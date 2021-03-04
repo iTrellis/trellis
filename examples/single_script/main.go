@@ -25,6 +25,7 @@ import (
 	"github.com/iTrellis/trellis/configure"
 	"github.com/iTrellis/trellis/service"
 	"github.com/iTrellis/trellis/service/component"
+	"github.com/iTrellis/trellis/service/message"
 )
 
 var s = service.Service{Name: "simple_script", Version: "v1"}
@@ -49,8 +50,8 @@ func (p *singleScript) Stop() error {
 	return nil
 }
 
-func (p *singleScript) Route(topic string) component.Handler {
-	return nil
+func (p *singleScript) Route(message.Message) (interface{}, error) {
+	return nil, nil
 }
 
 func main() {

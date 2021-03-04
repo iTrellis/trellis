@@ -27,7 +27,6 @@ import (
 
 	"github.com/iTrellis/trellis/cmd"
 	"github.com/iTrellis/trellis/internal/addr"
-	"github.com/iTrellis/trellis/server"
 	"github.com/iTrellis/trellis/server/gin_middlewares"
 	"github.com/iTrellis/trellis/service"
 	"github.com/iTrellis/trellis/service/component"
@@ -47,7 +46,7 @@ func init() {
 	)
 }
 
-var handlers = make(map[string]*server.Handler)
+var handlers = make(map[string]*gin_middlewares.Handler)
 
 func RegistCustomHandlers(name, path, method string, fn gin.HandlerFunc) {
 
@@ -59,21 +58,7 @@ func RegistCustomHandlers(name, path, method string, fn gin.HandlerFunc) {
 		panic(fmt.Errorf("handler isalread exists"))
 	}
 
-	handlers[name] = &server.Handler{Name: name, URLPath: path, Method: strings.ToUpper(method), Func: fn}
-}
-
-var useFuncs = make(map[string]gin.HandlerFunc)
-var indexGinFuncs []string
-
-// RegistUseFuncs 注册
-func RegistUseFuncs(name string, fn gin.HandlerFunc) error {
-	_, ok := useFuncs[name]
-	if ok {
-		return fmt.Errorf("use funcs (%s) is already exist", name)
-	}
-	useFuncs[name] = fn
-	indexGinFuncs = append(indexGinFuncs, name)
-	return nil
+	handlers[name] = &gin_middlewares.Handler{Name: name, URLPath: path, Method: strings.ToUpper(method), Func: fn}
 }
 
 type httpServer struct {
@@ -183,8 +168,8 @@ func (p *httpServer) init() error {
 		gin_middlewares.LoadCors(httpConf.GetValuesConfig("cors")),
 	}
 
-	for _, name := range indexGinFuncs {
-		ginHanlders = append(ginHanlders, useFuncs[name])
+	for _, name := range gin_middlewares.IndexGinFuncs {
+		ginHanlders = append(ginHanlders, gin_middlewares.UseFuncs[name])
 	}
 	engine.Use(ginHanlders...)
 
@@ -208,8 +193,8 @@ func (p *httpServer) init() error {
 	return nil
 }
 
-func (p *httpServer) Route(topic string) component.Handler {
-	return nil
+func (p *httpServer) Route(message.Message) (interface{}, error) {
+	return nil, nil
 }
 
 func (p *httpServer) Start() error {

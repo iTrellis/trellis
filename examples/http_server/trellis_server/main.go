@@ -25,14 +25,15 @@ import (
 
 	"github.com/iTrellis/trellis/cmd"
 	"github.com/iTrellis/trellis/examples/components"
+	"github.com/iTrellis/trellis/server/gin_middlewares"
 	"github.com/iTrellis/trellis/service"
 
-	"github.com/iTrellis/trellis/server/api"
+	_ "github.com/iTrellis/trellis/server/api"
 )
 
-// curl -X 'POST' -H 'X-Api: trellis.ping' 'http://localhost:8080/v1' -H 'Authorization: aaa'
+// curl -X 'POST' -H 'X-Api: trellis.ping' 'http://localhost:8080/' -H 'Authorization: aaa'
 
-// curl -X 'GET' 'http://localhost:8080/debug/pprof' -H 'Authorization: test'
+// curl -X 'GET' 'http://localhost:8080/debug/pprof/profile' -H 'Authorization: test'
 
 func main() {
 	c, err := cmd.New()
@@ -48,7 +49,7 @@ func main() {
 		&service.Service{Name: "component_ping", Version: "v1"},
 		components.NewPing)
 
-	api.RegistUseFuncs("auth", Auth())
+	gin_middlewares.RegistUseFuncs("auth", Auth())
 
 	if err := c.Start(); err != nil {
 		log.Fatalln(err)

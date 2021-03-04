@@ -1,10 +1,10 @@
 project:
   services:
-    -
+    component_ping:
       name: component_ping
       version: v1
   registries:
-    -
+    grpc_test:
       name: grpc_test
       type: 1
       endpoints: ["127.0.0.1:2379"]

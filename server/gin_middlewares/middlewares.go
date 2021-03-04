@@ -1,6 +1,7 @@
 package gin_middlewares
 
 import (
+	"fmt"
 	"net/url"
 	"regexp"
 
@@ -9,6 +10,27 @@ import (
 	tnet "github.com/iTrellis/trellis/internal/net"
 	"github.com/iTrellis/trellis/service"
 )
+
+type Handler struct {
+	Name    string
+	URLPath string
+	Method  string
+	Func    gin.HandlerFunc
+}
+
+var UseFuncs = make(map[string]gin.HandlerFunc)
+var IndexGinFuncs []string
+
+// RegistUseFuncs 注册
+func RegistUseFuncs(name string, fn gin.HandlerFunc) error {
+	_, ok := UseFuncs[name]
+	if ok {
+		return fmt.Errorf("use funcs (%s) is already exist", name)
+	}
+	UseFuncs[name] = fn
+	IndexGinFuncs = append(IndexGinFuncs, name)
+	return nil
+}
 
 func NewRequestID() gin.HandlerFunc {
 	return func(c *gin.Context) {

@@ -92,7 +92,7 @@ func (p *manager) CallComponent(ctx context.Context, msg message.Message) (inter
 		return nil, fmt.Errorf("unknown component")
 	}
 
-	return cpt.Route(msg.Topic())(msg)
+	return cpt.Route(msg)
 }
 
 func (p *manager) CallServer(ctx context.Context, msg message.Message) (interface{}, error) {
