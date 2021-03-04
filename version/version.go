@@ -30,10 +30,14 @@ func ShowAllInfo() {
 
 // Version 版本信息
 func Version() string {
-	return fmt.Sprintf("(version: %s, %s)", builder.CompilerVersion, builder.ProgramVersion)
+	return fmt.Sprintf("%s, version: %s (branch: %s, revision: %s)",
+		builder.ProgramName, builder.ProgramVersion,
+		builder.ProgramBranch, builder.ProgramRevision,
+	)
 }
 
 // BuildInfo returns goVersion, Author and buildTime information.
 func BuildInfo() string {
-	return fmt.Sprintf("(go=%s, user=%s, date=%s)", builder.CompilerVersion, builder.Author, builder.BuildTime)
+	return fmt.Sprintf("(go=%s, user=%s, date=%s)",
+		builder.CompilerVersion, builder.Author, builder.BuildTime)
 }

@@ -29,17 +29,15 @@ import (
 var (
 	ProgramName     string
 	ProgramVersion  string
+	ProgramBranch   string
+	ProgramRevision string
 	CompilerVersion string
 	BuildTime       string
 	Author          string
 )
 
-// Show 显示项目信息
-func Show() {
-	bannerLogo :=
-		`
-*************************************************************** ***
-*************************************************************** ***
+const bannerLogo = `%s*******************************************************************
+*******************************************************************
 ***  _______   _______   _______   _       _       _    ______  ***
 *** (__   __) |  ___  \ /  _____) / \     / \     / \  /  ____) ***
 ***    | |    | |___| | | (____   | |     | |     | |  | (____  ***
@@ -51,18 +49,43 @@ func Show() {
 ******************** Compile Environment **************************
 *** Program Name     : %s
 *** Program Version  : %s
+*** Program Branch   : %s
+*** Program Revision : %s
 *** Compiler Version : %s
 *** Build Time       : %s
 *** Author           : %s
 *******************************************************************
 ******************** Running Environment **************************
+*** GO ROOT            : {{ .GOROOT }}
 *** Go running version : {{ .GoVersion }}
+*** Go compiler        : {{ .Compiler }}
 *** Go running OS      : {{ .GOOS }} {{ .GOARCH }}
-*** Startup time       : {{ .Now "2006-01-02 15:04:05" }}
+*** Go CPU Numbers     : {{ .NumCPU }}
+*** Startup time       : {{ .Now "2006-01-02 15:04:05 (Monday)" }}
 *******************************************************************
 *******************************************************************
 `
-	newBanner := fmt.Sprintf(bannerLogo, ProgramName, ProgramVersion, CompilerVersion, BuildTime, Author)
 
-	banner.Init(colorable.NewColorableStdout(), true, true, strings.NewReader(newBanner))
+// Show 显示项目信息
+func Show(on ...bool) {
+	ShowWithColor("{{ .AnsiColor.Default }}", on...)
+}
+
+// ShowWithColor 显示项目信息
+func ShowWithColor(color string, on ...bool) {
+
+	newBanner := fmt.Sprintf(bannerLogo, color,
+		ProgramName, ProgramVersion,
+		ProgramBranch, ProgramRevision,
+		CompilerVersion, BuildTime, Author)
+
+	onShow, onColor := true, true
+	if lenOns := len(on); lenOns == 1 {
+		onShow = on[0]
+	} else if lenOns > 1 {
+		onShow = on[0]
+		onColor = on[1]
+	}
+
+	banner.Init(colorable.NewColorableStdout(), onShow, onColor, strings.NewReader(newBanner))
 }

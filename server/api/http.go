@@ -34,7 +34,6 @@ import (
 	"github.com/iTrellis/trellis/service/message"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/iTrellis/common/errors"
 	"github.com/iTrellis/common/formats"
 	"github.com/iTrellis/xorm_ext"
@@ -174,12 +173,13 @@ func (p *httpServer) init() error {
 
 	engine := gin.New()
 
+	engine.Use(gin.Recovery(), gin_middlewares.NewRequestID(), StatFunc(p.options.Logger))
+
 	httpConf := p.options.Config.GetValuesConfig("http")
 
+	gin_middlewares.LoadPprof(engine, httpConf.GetValuesConfig("pprof"))
+
 	ginHanlders := []gin.HandlerFunc{
-		gin_middlewares.NewRequestID(),
-		gin.Recovery(),
-		StatFunc(p.options.Logger),
 		gin_middlewares.LoadCors(httpConf.GetValuesConfig("cors")),
 	}
 
@@ -187,8 +187,6 @@ func (p *httpServer) init() error {
 		ginHanlders = append(ginHanlders, useFuncs[name])
 	}
 	engine.Use(ginHanlders...)
-
-	gin_middlewares.LoadPprof(engine, httpConf.GetValuesConfig("pprof"))
 
 	urlPath := httpConf.GetString("postapi")
 	if len(urlPath) != 0 {
@@ -261,10 +259,6 @@ func (p *httpServer) serve(gCtx *gin.Context) {
 	clientIP := addr.GetClientIP(gCtx.Request)
 
 	reqID := gCtx.GetHeader(service.HeaderXRequestID)
-	if reqID == "" {
-		reqID = uuid.NewString()
-		gCtx.Request.Header.Set(service.HeaderXRequestID, reqID)
-	}
 
 	r := &Response{
 		TraceID: reqID,

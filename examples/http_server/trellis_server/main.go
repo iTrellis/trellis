@@ -19,15 +19,20 @@ package main
 
 import (
 	"log"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
 
 	"github.com/iTrellis/trellis/cmd"
 	"github.com/iTrellis/trellis/examples/components"
 	"github.com/iTrellis/trellis/service"
 
-	_ "github.com/iTrellis/trellis/server/api"
+	"github.com/iTrellis/trellis/server/api"
 )
 
-// curl -X 'POST' -H 'X-Api: trellis.ping' 'http://localhost:8080/v1'
+// curl -X 'POST' -H 'X-Api: trellis.ping' 'http://localhost:8080/v1' -H 'Authorization: aaa'
+
+// curl -X 'GET' 'http://localhost:8080/debug/pprof' -H 'Authorization: test'
 
 func main() {
 	c, err := cmd.New()
@@ -43,9 +48,21 @@ func main() {
 		&service.Service{Name: "component_ping", Version: "v1"},
 		components.NewPing)
 
+	api.RegistUseFuncs("auth", Auth())
+
 	if err := c.Start(); err != nil {
 		log.Fatalln(err)
 	}
 
 	c.BlockRun()
+}
+
+func Auth() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if c.Request.Header.Get("Authorization") != "aaa" {
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+		c.Next()
+	}
 }
