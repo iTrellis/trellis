@@ -48,6 +48,7 @@ func init() {
 
 var handlers = make(map[string]*gin_middlewares.Handler)
 
+// RegistCustomHandlers register customer's handlers
 func RegistCustomHandlers(name, path, method string, fn gin.HandlerFunc) {
 
 	if fn == nil {
@@ -87,6 +88,13 @@ type Response struct {
 	Namespace string      `json:"namespace,omitempty"`
 	Msg       string      `json:"msg,omitempty"`
 	Result    interface{} `json:"result"`
+}
+
+// InnerResult result of running component
+type InnerResult struct {
+	HTTPCode    int
+	RedirectURL string
+	Body        interface{}
 }
 
 // NewHTTPServer new api service
@@ -299,8 +307,7 @@ func (p *httpServer) serve(gCtx *gin.Context) {
 	}
 
 	if err == nil {
-		r.Result = resp
-		gCtx.JSON(200, r)
+		r.reponse(gCtx, resp)
 		return
 	}
 
@@ -329,4 +336,30 @@ func (p *httpServer) getAPI(name string) (*API, bool) {
 	api, ok := p.apis[name]
 	p.syncer.RUnlock()
 	return api, ok
+}
+
+func (p *Response) reponse(ctx *gin.Context, resp interface{}) {
+	switch t := resp.(type) {
+	case InnerResult:
+		p.genResult(ctx, &t)
+		return
+	case *InnerResult:
+		p.genResult(ctx, t)
+		return
+	default:
+		p.Result = resp
+		ctx.JSON(200, p)
+		return
+	}
+}
+
+func (p *Response) genResult(ctx *gin.Context, t *InnerResult) {
+	switch t.HTTPCode {
+	case http.StatusPermanentRedirect, http.StatusTemporaryRedirect:
+		ctx.Redirect(t.HTTPCode, t.RedirectURL)
+		return
+	default:
+		p.Result = t.Body
+		ctx.JSON(t.HTTPCode, p)
+	}
 }
