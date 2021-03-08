@@ -355,9 +355,8 @@ func (p *Response) reponse(ctx *gin.Context, resp interface{}) {
 
 func (p *Response) genResult(ctx *gin.Context, t *InnerResult) {
 	switch t.HTTPCode {
-	case http.StatusPermanentRedirect, http.StatusTemporaryRedirect:
+	case http.StatusMovedPermanently, http.StatusFound:
 		ctx.Redirect(t.HTTPCode, t.RedirectURL)
-		return
 	default:
 		p.Result = t.Body
 		ctx.JSON(t.HTTPCode, p)
