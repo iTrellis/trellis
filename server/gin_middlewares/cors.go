@@ -13,9 +13,7 @@ import (
 func LoadCors(conf config.Config) gin.HandlerFunc {
 
 	if conf == nil {
-		return func(c *gin.Context) {
-			c.Next()
-		}
+		return nil
 	}
 
 	var corsConf cors.Config

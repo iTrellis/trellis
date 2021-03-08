@@ -10,6 +10,8 @@ github.com/cpuguy83/go-md2man/v2/md2man
 github.com/dimiro1/banner
 # github.com/gin-contrib/cors v1.3.1
 github.com/gin-contrib/cors
+# github.com/gin-contrib/gzip v0.0.3
+github.com/gin-contrib/gzip
 # github.com/gin-contrib/pprof v1.3.0
 github.com/gin-contrib/pprof
 # github.com/gin-contrib/sse v0.1.0
@@ -50,7 +52,7 @@ github.com/golang/protobuf/ptypes/timestamp
 github.com/golang/snappy
 # github.com/google/uuid v1.2.0
 github.com/google/uuid
-# github.com/iTrellis/common v0.21.7-0.20210304081147-f749f508ca55
+# github.com/iTrellis/common v0.21.7
 github.com/iTrellis/common/builder
 github.com/iTrellis/common/data-structures/stack
 github.com/iTrellis/common/encryption/binary-formats
@@ -61,11 +63,11 @@ github.com/iTrellis/common/files
 github.com/iTrellis/common/formats
 github.com/iTrellis/common/logger
 github.com/iTrellis/common/testutils
-# github.com/iTrellis/config v0.21.4
+# github.com/iTrellis/config v0.21.5
 github.com/iTrellis/config
-# github.com/iTrellis/node v0.21.3
+# github.com/iTrellis/node v0.21.4
 github.com/iTrellis/node
-# github.com/iTrellis/xorm_ext v0.21.4
+# github.com/iTrellis/xorm_ext v0.21.5
 github.com/iTrellis/xorm_ext
 # github.com/json-iterator/go v1.1.9
 github.com/json-iterator/go

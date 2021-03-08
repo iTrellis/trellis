@@ -9,14 +9,15 @@ replace (
 
 require (
 	github.com/gin-contrib/cors v1.3.1
+	github.com/gin-contrib/gzip v0.0.3
 	github.com/gin-contrib/pprof v1.3.0
 	github.com/gin-gonic/gin v1.6.3
 	github.com/golang/protobuf v1.3.5
 	github.com/google/uuid v1.2.0
-	github.com/iTrellis/common v0.21.7-0.20210304081147-f749f508ca55
-	github.com/iTrellis/config v0.21.4
-	github.com/iTrellis/node v0.21.3
-	github.com/iTrellis/xorm_ext v0.21.4
+	github.com/iTrellis/common v0.21.7
+	github.com/iTrellis/config v0.21.5
+	github.com/iTrellis/node v0.21.4
+	github.com/iTrellis/xorm_ext v0.21.5
 	github.com/mitchellh/hashstructure/v2 v2.0.1
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c
 	github.com/sirupsen/logrus v1.8.0

@@ -5,8 +5,10 @@ import (
 	"net/url"
 	"regexp"
 
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/iTrellis/config"
 	tnet "github.com/iTrellis/trellis/internal/net"
 	"github.com/iTrellis/trellis/service"
 )
@@ -91,4 +93,32 @@ func NewCSRF(c CSRFConfig) gin.HandlerFunc {
 			}
 		}
 	}
+}
+
+func LoadGZip(conf config.Config) gin.HandlerFunc {
+
+	if conf == nil {
+		return nil
+	}
+
+	if !conf.GetBoolean("enabled", true) {
+		return nil
+	}
+
+	compressLevel := conf.GetString("level", "default")
+
+	level := gzip.DefaultCompression
+
+	switch compressLevel {
+	case "best-compression":
+		{
+			level = gzip.BestCompression
+		}
+	case "best-speed":
+		{
+			level = gzip.BestSpeed
+		}
+	}
+
+	return gzip.Gzip(level)
 }

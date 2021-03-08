@@ -15,6 +15,7 @@ project:
         http:
           postapi: "/"
           address: ":8080"
+          # shutdown-timeout: 30s
           pprof:
             enabled: true
             authorization: "test" ## default no need header: Authorization

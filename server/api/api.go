@@ -19,6 +19,7 @@ package api
 
 import (
 	"github.com/google/uuid"
+	"github.com/iTrellis/trellis/service"
 )
 
 // API api struct
@@ -38,20 +39,28 @@ func (*API) TableName() string {
 	return "api"
 }
 
-func (p *httpServer) syncAPIs(domain string) {
+func (p *httpServer) syncAPIs(s *service.Service) {
 	for {
 		syncID := uuid.NewString()
-		p.options.Logger.Info("msg", "start_sync_apis", "sync", syncID, "domain", domain)
+		p.options.Logger.Info("msg", "start_sync_apis", "sync", syncID, "service", s)
 
 		parmas := map[string]interface{}{"`status`": "normal"}
 
-		if domain != "" {
-			parmas["`service_domain`"] = domain
+		if s.GetDomain() != "" {
+			parmas["`service_domain`"] = s.GetDomain()
 		}
+
+		if s.GetName() != "" {
+			parmas["`service_name`"] = s.GetName()
+		}
+
+		if s.GetName() != "" {
+			parmas["`service_version`"] = s.GetVersion()
+		}
+
 		var apis []*API
 		if err := p.apiEngine.Where(parmas).Find(&apis); err != nil {
 			p.options.Logger.Error("msg", "sync_apis_failed", "sync", syncID, "err", err.Error())
-			// todo judge err to crash
 			<-p.ticker.C
 			continue
 		}
@@ -66,7 +75,7 @@ func (p *httpServer) syncAPIs(domain string) {
 		p.syncer.Lock()
 		p.apis = mapAPIs
 		p.syncer.Unlock()
-		p.options.Logger.Info("msg", "end_sync_apis", "sync", syncID, "domain", domain)
+		p.options.Logger.Info("msg", "end_sync_apis", "sync", syncID, "service", s)
 
 		<-p.ticker.C
 	}

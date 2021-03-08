@@ -20,6 +20,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -159,7 +160,12 @@ func (p *httpServer) init() error {
 
 		p.ticker = time.NewTicker(ticker)
 
-		go p.syncAPIs(apisConf.GetString("service_domain"))
+		s := &service.Service{
+			Domain:  apisConf.GetString("service_domain"),
+			Name:    apisConf.GetString("service_name"),
+			Version: apisConf.GetString("service_version"),
+		}
+		go p.syncAPIs(s)
 	default:
 		return fmt.Errorf("unknown apis' config type")
 	}
@@ -172,8 +178,14 @@ func (p *httpServer) init() error {
 
 	gin_middlewares.LoadPprof(engine, httpConf.GetValuesConfig("pprof"))
 
-	ginHanlders := []gin.HandlerFunc{
-		gin_middlewares.LoadCors(httpConf.GetValuesConfig("cors")),
+	ginHanlders := []gin.HandlerFunc{}
+
+	if gzipH := gin_middlewares.LoadGZip(httpConf.GetValuesConfig("gzip")); gzipH != nil {
+		ginHanlders = append(ginHanlders, gzipH)
+	}
+
+	if corsH := gin_middlewares.LoadCors(httpConf.GetValuesConfig("cors")); corsH != nil {
+		ginHanlders = append(ginHanlders, corsH)
 	}
 
 	for _, name := range gin_middlewares.IndexGinFuncs {
@@ -207,7 +219,6 @@ func (p *httpServer) Route(message.Message) (interface{}, error) {
 
 func (p *httpServer) Start() error {
 
-	ch := make(chan error)
 	go func() {
 
 		var err error
@@ -223,14 +234,14 @@ func (p *httpServer) Start() error {
 			err = p.srv.ListenAndServe()
 		}
 
-		if err != http.ErrServerClosed {
-			p.options.Logger.Error("msg", "http_server_closed", "error", err.Error())
+		if err != nil {
+			if err != http.ErrServerClosed {
+				p.options.Logger.Error("msg", "failed_listen_and_serve", "error", err.Error())
+				log.Fatalln(err)
+			}
 		}
-
-		ch <- err
 	}()
-
-	return <-ch
+	return nil
 }
 
 func (p *httpServer) Stop() error {

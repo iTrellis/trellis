@@ -51,11 +51,9 @@ func main() {
 
 	gin_middlewares.RegistUseFuncs("auth", Auth())
 
-	if err := c.Start(); err != nil {
+	if err := c.BlockRun(); err != nil {
 		log.Fatalln(err)
 	}
-
-	c.BlockRun()
 }
 
 func Auth() gin.HandlerFunc {

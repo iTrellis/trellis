@@ -18,6 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/iTrellis/trellis/cmd"
@@ -51,11 +52,9 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	if err := c.Start(); err != nil {
+	if err := c.BlockRun(); err != nil {
 		log.Fatalln(err)
 	}
-
-	c.BlockRun()
 }
 
 var defHandler *compHandler
@@ -90,6 +89,7 @@ func (p *compHandler) Route(msg message.Message) (interface{}, error) {
 }
 
 func (p *compHandler) Start() error {
+	fmt.Println("customer handler started")
 	return nil
 }
 

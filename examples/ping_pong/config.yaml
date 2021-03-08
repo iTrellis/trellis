@@ -1,7 +1,5 @@
 
 project:
-  logger:
-    level: 1
   services:
     component_ping:
       name: component_ping
