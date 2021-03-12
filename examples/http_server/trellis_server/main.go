@@ -31,9 +31,11 @@ import (
 	_ "github.com/iTrellis/trellis/server/api"
 )
 
-// curl -X 'POST' -H 'X-Api: trellis.ping' 'http://localhost:8080/' -H 'Authorization: aaa'
+// curl -X 'POST' -H 'X-Api: trellis.ping' 'http://localhost:8080/v1' -H 'Authorization: aaa'
 
 // curl -X 'GET' 'http://localhost:8080/debug/pprof/profile' -H 'Authorization: test'
+
+// curl -i 'http://localhost:8080/static' -H 'Authorization: aaa'
 
 func main() {
 	c, err := cmd.New()

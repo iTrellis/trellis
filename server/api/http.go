@@ -176,6 +176,12 @@ func (p *httpServer) init() error {
 
 	httpConf := p.options.Config.GetValuesConfig("http")
 
+	staticPath := httpConf.GetString("static_path")
+	staticRoot := httpConf.GetString("static_root", "./root")
+	if staticPath != "" {
+		engine.Static(staticPath, staticRoot)
+	}
+
 	gin_middlewares.LoadPprof(engine, httpConf.GetValuesConfig("pprof"))
 
 	ginHanlders := []gin.HandlerFunc{}

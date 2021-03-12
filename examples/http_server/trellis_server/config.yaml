@@ -13,7 +13,9 @@ project:
       version: v1
       options:
         http:
-          postapi: "/"
+          postapi: "/v1"
+          static_path: "/static"
+          static_root: "../static_server/root"
           address: ":8080"
           # shutdown-timeout: 30s
           pprof:

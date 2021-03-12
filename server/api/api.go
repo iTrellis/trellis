@@ -22,6 +22,9 @@ import (
 	"github.com/iTrellis/trellis/service"
 )
 
+// APITableName default api
+var APITableName = "api"
+
 // API api struct
 type API struct {
 	ID             string `xorm:"id"`
@@ -31,12 +34,11 @@ type API struct {
 	ServiceVersion string `xorm:"service_version"`
 	Topic          string `xorm:"topic"`
 	Status         string `xorm:"status"`
-	Version        int64  `xorm:"version"`
 }
 
 // TableName database table name
 func (*API) TableName() string {
-	return "api"
+	return APITableName
 }
 
 func (p *httpServer) syncAPIs(s *service.Service) {
@@ -69,6 +71,7 @@ func (p *httpServer) syncAPIs(s *service.Service) {
 		mapAPIs := make(map[string]*API, lenAPI)
 
 		for i := 0; i < lenAPI; i++ {
+			p.options.Logger.Debug("msg", "add_new_api", "api", apis[i])
 			mapAPIs[apis[i].Name] = apis[i]
 		}
 
