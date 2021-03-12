@@ -14,7 +14,8 @@ project:
       options:
         http:
           postapi: "/v1"
-          static_path: "/static"
+          static_path: "/"
+          static_redirect: "/text/"
           static_root: "../static_server/root"
           address: ":8080"
           # shutdown-timeout: 30s

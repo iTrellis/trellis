@@ -25,6 +25,8 @@ import (
 	_ "github.com/iTrellis/trellis/server/static"
 )
 
+// curl -i 'http://localhost:8080/'  ## 302
+
 func main() {
 	c, err := cmd.New()
 	if err != nil {

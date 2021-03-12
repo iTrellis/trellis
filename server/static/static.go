@@ -76,9 +76,23 @@ func (p *Handler) init() error {
 	}
 	engine.Use(ginHanlders...)
 
-	staticPath := httpConf.GetString("static", "/")
-	rootPath := httpConf.GetString("root", "./static")
-	engine.Static(staticPath, rootPath)
+	pathConfig := httpConf.GetValuesConfig("path")
+
+	for _, key := range pathConfig.GetKeys() {
+		staticPath := pathConfig.GetString(key+".static", "/")
+		staticRedirect := pathConfig.GetString(key + ".redirect")
+		staticRoot := pathConfig.GetString(key+".root", "./root")
+
+		if staticRedirect != "" {
+			engine.GET(staticPath, func(c *gin.Context) {
+				c.Redirect(http.StatusFound, staticRedirect)
+			})
+
+			engine.Static(staticRedirect, staticRoot)
+		} else {
+			engine.Static(staticPath, staticRoot)
+		}
+	}
 
 	p.srv = &http.Server{
 		Addr:    httpConf.GetString("address", ":8080"),

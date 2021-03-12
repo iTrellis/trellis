@@ -177,9 +177,18 @@ func (p *httpServer) init() error {
 	httpConf := p.options.Config.GetValuesConfig("http")
 
 	staticPath := httpConf.GetString("static_path")
+	staticRedirect := httpConf.GetString("static_redirect")
 	staticRoot := httpConf.GetString("static_root", "./root")
 	if staticPath != "" {
-		engine.Static(staticPath, staticRoot)
+		if staticRedirect != "" {
+			engine.GET(staticPath, func(c *gin.Context) {
+				c.Redirect(http.StatusFound, staticRedirect)
+			})
+
+			engine.Static(staticRedirect, staticRoot)
+		} else {
+			engine.Static(staticPath, staticRoot)
+		}
 	}
 
 	gin_middlewares.LoadPprof(engine, httpConf.GetValuesConfig("pprof"))

@@ -35,7 +35,8 @@ import (
 
 // curl -X 'GET' 'http://localhost:8080/debug/pprof/profile' -H 'Authorization: test'
 
-// curl -i 'http://localhost:8080/static' -H 'Authorization: aaa'
+// curl -i 'http://localhost:8080/' -H 'Authorization: aaa'  ## 302
+// curl -i 'http://localhost:8080/text' -H 'Authorization: aaa'
 
 func main() {
 	c, err := cmd.New()
