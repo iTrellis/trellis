@@ -137,6 +137,9 @@ func (p *manager) CallServer(ctx context.Context, msg message.Message) (interfac
 func (p *manager) Start() error {
 
 	for _, cpt := range p.manager.ListComponents() {
+		if cpt.Started {
+			continue
+		}
 		p.logger.Info("start_component", cpt.Name)
 
 		if cpt.Component == nil {
@@ -156,6 +159,9 @@ func (p *manager) Start() error {
 func (p *manager) Stop() error {
 
 	for _, cpt := range p.manager.ListComponents() {
+		if cpt.Started {
+			continue
+		}
 		if err := cpt.Component.Stop(); err != nil {
 			p.logger.Error("stop_component", cpt.Name, "err", err.Error())
 			return err
