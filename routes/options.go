@@ -20,21 +20,13 @@ package routes
 import (
 	"github.com/iTrellis/common/logger"
 	"github.com/iTrellis/trellis/service/component"
-	"github.com/iTrellis/trellis/service/router"
 )
 
 type Option func(*Options)
 
 type Options struct {
-	router  router.Router
 	manager component.Manager
 	logger  logger.Logger
-}
-
-func WithRouter(r router.Router) Option {
-	return func(o *Options) {
-		o.router = r
-	}
 }
 
 func CompManager(m component.Manager) Option {

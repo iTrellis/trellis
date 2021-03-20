@@ -26,18 +26,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/iTrellis/trellis/cmd"
-	"github.com/iTrellis/trellis/internal/addr"
-	"github.com/iTrellis/trellis/server/gin_middlewares"
-	"github.com/iTrellis/trellis/service"
-	"github.com/iTrellis/trellis/service/component"
-	"github.com/iTrellis/trellis/service/message"
-
 	"github.com/gin-gonic/gin"
 	"github.com/iTrellis/common/errors"
 	"github.com/iTrellis/common/formats"
 	"github.com/iTrellis/xorm_ext"
 	"xorm.io/xorm"
+
+	"github.com/iTrellis/trellis/cmd"
+	"github.com/iTrellis/trellis/internal/addr"
+	"github.com/iTrellis/trellis/internal/gin_middlewares"
+	"github.com/iTrellis/trellis/service"
+	"github.com/iTrellis/trellis/service/component"
+	"github.com/iTrellis/trellis/service/message"
 )
 
 func init() {
@@ -172,7 +172,7 @@ func (p *httpServer) init() error {
 
 	engine := gin.New()
 
-	engine.Use(gin.Recovery(), gin_middlewares.NewRequestID(), StatFunc(p.options.Logger))
+	engine.Use(gin.Recovery(), gin_middlewares.NewRequestID(), gin_middlewares.StatFunc(p.options.Logger))
 
 	httpConf := p.options.Config.GetValuesConfig("http")
 
@@ -324,14 +324,7 @@ func (p *httpServer) serve(gCtx *gin.Context) {
 		message.MessagePayload(payload),
 	)
 
-	var resp interface{}
-	switch p.mode {
-	case "local", "":
-		resp, err = p.options.Caller.CallComponent(context.Background(), msg)
-	case "remote":
-		resp, err = p.options.Caller.CallServer(context.Background(), msg)
-	}
-
+	resp, err := p.options.Caller.CallComponent(msg)
 	if err == nil {
 		r.reponse(gCtx, resp)
 		return

@@ -1,0 +1,35 @@
+project:
+  logger:
+    level: 1
+  registries:
+    test:
+      name: test
+      type: 1
+      endpoint: ["127.0.0.1:2379"]
+      timeout: 10s
+      ttl: 15s
+      heartbeat: 10s
+      server_addr: "http://127.0.0.1:8081/v1"
+      retry_times: 1
+  services:
+    component_pong:
+      name: component_pong
+      version: v1
+      registry:
+        name: test
+        weight: 10
+        protocol: 2
+    trellis-server-http:
+      name: trellis-server-http
+      version: v1
+      options:
+        gin_mode: debug
+        http:
+          postapi: "/v1"
+          address: ":8081"
+          # shutdown-timeout: 30s
+          pprof:
+            enabled: true
+            authorization: "test" ## default no need header: Authorization
+            prefix: / ## default /
+          # cors:

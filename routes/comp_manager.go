@@ -31,14 +31,11 @@ import (
 type compManager struct {
 	sync.RWMutex
 
-	// logger logger.Logger
-
-	components map[string]component.Component
+	components        map[string]component.Component
+	startedComponents map[string]bool
 
 	newComponentFuncs map[string]component.NewComponentFunc
-
 	componentNames    []string
-	startedComponents map[string]bool
 }
 
 // NewCompManager new default component manager
@@ -50,28 +47,56 @@ func NewCompManager() component.Manager {
 	}
 }
 
-// RegisterComponent regist component function
-func (p *compManager) RegisterComponentFunc(s *service.Service, fn component.NewComponentFunc) {
+// RegisterComponentFunc register component function
+func (p *compManager) RegisterComponentFunc(s *service.Service, fn component.NewComponentFunc) error {
 
 	if s.GetName() == "" {
-		panic("component name is empty")
+		return errors.New("component name is empty")
 	}
 
 	if fn == nil {
-		panic("component fn is nil")
+		return errors.New("component fn is nil")
 	}
 
 	p.RLock()
 	_, exist := p.newComponentFuncs[s.TrellisPath()]
 	p.RUnlock()
 	if exist {
-		panic(fmt.Sprintf("component already registered: %s", s.TrellisPath()))
+		return fmt.Errorf("component already registered: %s", s.TrellisPath())
 	}
 
 	p.Lock()
 	p.newComponentFuncs[s.TrellisPath()] = fn
 	p.componentNames = append(p.componentNames, s.TrellisPath())
 	p.Unlock()
+
+	return nil
+}
+
+// RegisterComponent register component
+func (p *compManager) RegisterComponent(s *service.Service, cpt component.Component) error {
+
+	if s.GetName() == "" {
+		return errors.New("component name is empty")
+	}
+
+	if cpt == nil {
+		return errors.New("component is nil")
+	}
+
+	p.RLock()
+	_, exist := p.components[s.TrellisPath()]
+	p.RUnlock()
+	if exist {
+		return fmt.Errorf("component already registered: %s", s.TrellisPath())
+	}
+
+	p.Lock()
+	p.components[s.TrellisPath()] = cpt
+	p.startedComponents[s.TrellisPath()] = true
+	p.Unlock()
+
+	return nil
 }
 
 // ListComponents get components

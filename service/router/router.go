@@ -27,11 +27,6 @@ import (
 type Router interface {
 	service.LifeCycle
 
-	// 	Caller
-
-	// 	Registry
-	// }
-
 	// // Caller handle serving messages
 	// type Caller interface {
 	// Remote for handler TODO

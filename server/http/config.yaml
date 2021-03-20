@@ -1,0 +1,16 @@
+project:
+  services:
+    trellis-server-http:
+      name: trellis-server-http
+      version: v1
+      options:
+        gin_mode: debug
+        http:
+          postapi: "/v1"
+          address: ":8080"
+          # shutdown-timeout: 30s
+          pprof:
+            enabled: true
+            authorization: "test" ## default no need header: Authorization
+            prefix: / ## default /
+          # cors:

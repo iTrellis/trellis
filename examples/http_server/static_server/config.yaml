@@ -1,7 +1,7 @@
 project:
   services:
     trellis-static:
-      name: trellis-static
+      name: trellis-server-static
       version: v1
       options:
         http:

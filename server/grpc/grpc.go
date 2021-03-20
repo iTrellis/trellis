@@ -31,7 +31,7 @@ import (
 )
 
 func init() {
-	cmd.DefaultCompManager.RegisterComponentFunc(&service.Service{Name: "trellis-grpcserver", Version: "v1"}, NewService)
+	cmd.DefaultCompManager.RegisterComponentFunc(&service.Service{Name: "trellis-server-grpc", Version: "v1"}, NewService)
 }
 
 // Service api service

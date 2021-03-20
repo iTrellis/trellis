@@ -18,36 +18,24 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
-	"flag"
 	"log"
 
 	"github.com/iTrellis/trellis/cmd"
 
 	_ "github.com/iTrellis/trellis/examples/components"
-	_ "github.com/iTrellis/trellis/server/grpc"
+	_ "github.com/iTrellis/trellis/server/http"
 )
 
-var config string
-
-func init() {
-	flag.StringVar(&config, "config", "config.yaml", "config path")
-}
-
 func main() {
-
-	flag.Parse()
-
 	c, err := cmd.New()
 	if err != nil {
 		log.Fatalln(err)
 	}
-	if err := c.Init(cmd.ConfigFile(config)); err != nil {
+	if err := c.Init(cmd.ConfigFile("config.yaml")); err != nil {
 		log.Fatalln(err)
 	}
 
-	if err := c.Start(); err != nil {
+	if err := c.BlockRun(); err != nil {
 		log.Fatalln(err)
 	}
-
-	c.BlockRun()
 }

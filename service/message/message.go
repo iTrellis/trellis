@@ -18,8 +18,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package message
 
 import (
-	"context"
-
 	"github.com/iTrellis/trellis/service"
 	"github.com/iTrellis/trellis/service/codec"
 )
@@ -33,12 +31,32 @@ type Message interface {
 	SetBody(v interface{}) error
 	GetPayload() *Payload
 	ToObject(v interface{}) error
+	ToRemoteMessage() *RemoteMessage
+}
+
+// RemoteMessage remote message from two inner servers
+type RemoteMessage struct {
+	Domain  string `yaml:"domain" json:"domain"`
+	Name    string `yaml:"name" json:"name"`
+	Version string `yaml:"version" json:"version"`
+	Topic   string `yaml:"topic" json:"topic"`
+	Payload `yaml:"inline" json:"inline"`
+}
+
+func (p *RemoteMessage) ToMessage() Message {
+	return NewMessage(
+		MessagePayload(&p.Payload),
+		Service(service.Service{
+			Domain:  p.Domain,
+			Name:    p.Name,
+			Version: p.Version,
+			Topic:   p.Topic,
+		}))
 }
 
 // Caller caller for calling component or server
 type Caller interface {
-	CallComponent(context.Context, Message) (interface{}, error)
-	CallServer(ctx context.Context, msg Message) (interface{}, error)
+	CallComponent(Message) (interface{}, error)
 }
 
 func (p *Payload) Set(key, value string) {

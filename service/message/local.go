@@ -123,3 +123,18 @@ func (p *local) SetTopic(topic string) {
 	}
 	p.service.Topic = topic
 }
+
+func (p *local) ToRemoteMessage() *RemoteMessage {
+	msg := &RemoteMessage{
+		Domain:  p.service.GetDomain(),
+		Name:    p.service.GetName(),
+		Version: p.service.GetVersion(),
+		Topic:   p.service.GetTopic(),
+		Payload: Payload{},
+	}
+
+	if p.payload != nil {
+		msg.Payload = *p.payload
+	}
+	return msg
+}

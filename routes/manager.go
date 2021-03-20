@@ -18,24 +18,20 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package routes
 
 import (
-	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/iTrellis/common/logger"
-	"github.com/iTrellis/node"
 	"github.com/iTrellis/trellis/service"
-	"github.com/iTrellis/trellis/service/client/grpc"
 	"github.com/iTrellis/trellis/service/component"
 	"github.com/iTrellis/trellis/service/message"
-	"github.com/iTrellis/trellis/service/router"
 )
 
+// Manager routes manager
 type Manager interface {
 	Init(...Option)
 
 	service.LifeCycle
-
-	Router() router.Router
 
 	CompManager() component.Manager
 
@@ -53,7 +49,6 @@ func NewManager(opts ...Option) Manager {
 }
 
 type manager struct {
-	router  router.Router
 	manager component.Manager
 	logger  logger.Logger
 }
@@ -64,16 +59,8 @@ func (p *manager) Init(opts ...Option) {
 		o(&options)
 	}
 
-	if options.router != nil {
-		p.router = options.router
-	}
-
 	if options.manager != nil {
 		p.manager = options.manager
-	}
-
-	if p.router == nil {
-		p.router = NewRoutes(options.logger)
 	}
 
 	if p.manager == nil {
@@ -83,7 +70,7 @@ func (p *manager) Init(opts ...Option) {
 	p.logger = options.logger
 }
 
-func (p *manager) CallComponent(ctx context.Context, msg message.Message) (interface{}, error) {
+func (p *manager) CallComponent(msg message.Message) (interface{}, error) {
 
 	cpt, err := p.manager.GetComponent(msg.Service())
 	if err != nil {
@@ -91,50 +78,12 @@ func (p *manager) CallComponent(ctx context.Context, msg message.Message) (inter
 	} else if cpt == nil {
 		return nil, fmt.Errorf("unknown component")
 	}
+	p.logger.Debug("call_component", msg.Service().TrellisPath(), "topic", msg.Topic(), "component_type", reflect.TypeOf(cpt))
 
 	return cpt.Route(msg)
 }
 
-func (p *manager) CallServer(ctx context.Context, msg message.Message) (interface{}, error) {
-
-	nodes, err := p.router.GetServiceNodes(router.ReadService(msg.Service()))
-	if err != nil {
-		return nil, err
-	}
-
-	nm, err := node.NewWithNodes(node.NodeTypeConsistent, msg.Service().TrellisPath(), nodes)
-	if err != nil {
-		return nil, err
-	}
-
-	var keys []string
-
-	node, ok := nm.NodeFor(keys...)
-	if !ok {
-		return nil, fmt.Errorf("not found service node")
-	}
-
-	var rep interface{}
-	switch node.Metadata["protocol"] {
-	case service.Protocol_GRPC:
-		fallthrough
-	default:
-		c := grpc.NewClient()
-
-		// todo options
-		req := c.NewRequest(msg.Service(), node.Value, msg.GetPayload().GetBody())
-		ctx := context.Background()
-
-		err := c.Call(ctx, req, rep)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return rep, nil
-}
-
-func (p *manager) Start() error {
+func (p *manager) Start() (err error) {
 
 	for _, cpt := range p.manager.ListComponents() {
 		if !cpt.Started {
@@ -143,17 +92,19 @@ func (p *manager) Start() error {
 		p.logger.Info("start_component", cpt.Name)
 
 		if cpt.Component == nil {
-			err := fmt.Errorf("component not found: %s", cpt.Name)
-			p.logger.Error("start_component", cpt.Name, "err", "not found")
-			return err
+			err = fmt.Errorf("component not found: %s", cpt.Name)
+			p.logger.Error("msg", "failed_start_component", "error", err.Error())
+			return
 		}
-		if err := cpt.Component.Start(); err != nil {
-			p.logger.Error("start_component", cpt.Name, "err", err.Error())
-			return err
+
+		if err = cpt.Component.Start(); err != nil {
+			p.logger.Error("msg", "failed_start_component", "error", err.Error())
+			return
 		}
 	}
 
-	return p.router.Start()
+	// return p.router.Start()
+	return nil
 }
 
 func (p *manager) Stop() error {
@@ -167,11 +118,8 @@ func (p *manager) Stop() error {
 			return err
 		}
 	}
-	return p.router.Stop()
-}
-
-func (p *manager) Router() router.Router {
-	return p.router
+	// return p.router.Stop()
+	return nil
 }
 
 func (p *manager) CompManager() component.Manager {

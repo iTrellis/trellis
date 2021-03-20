@@ -27,6 +27,9 @@ import (
 
 // curl -i 'http://localhost:8080/'  ## 302
 
+// curl -i 'http://localhost:8080/v1/'
+// curl -i 'http://localhost:8080/v2/'
+
 func main() {
 	c, err := cmd.New()
 	if err != nil {

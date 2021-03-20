@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/iTrellis/common/logger"
-	"github.com/iTrellis/config"
 	"github.com/iTrellis/trellis/service"
 )
 
@@ -149,9 +148,9 @@ type WatchOption func(*WatchOptions)
 // WatchOptions watch service Options
 type WatchOptions struct {
 	Service service.Service
-	// Other options for implementations of the interface
-	// can be stored in a context
-	Options config.Options
+	// // Other options for implementations of the interface
+	// // can be stored in a context
+	// Options config.Options
 
 	Logger logger.Logger
 }
@@ -168,11 +167,11 @@ func WatchService(service service.Service) WatchOption {
 	}
 }
 
-func WatchContext(opts config.Options) WatchOption {
-	return func(w *WatchOptions) {
-		w.Options = opts
-	}
-}
+// func WatchContext(opts config.Options) WatchOption {
+// 	return func(w *WatchOptions) {
+// 		w.Options = opts
+// 	}
+// }
 
 // GetOption options' of getting service functions
 type GetOption func(*GetOptions)

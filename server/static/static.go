@@ -22,7 +22,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/iTrellis/trellis/cmd"
-	"github.com/iTrellis/trellis/server/gin_middlewares"
+	"github.com/iTrellis/trellis/internal/gin_middlewares"
 	"github.com/iTrellis/trellis/service"
 	"github.com/iTrellis/trellis/service/component"
 	"github.com/iTrellis/trellis/service/message"
@@ -30,7 +30,7 @@ import (
 
 func init() {
 	cmd.DefaultCompManager.RegisterComponentFunc(
-		&service.Service{Name: "trellis-static", Version: "v1"},
+		&service.Service{Name: "trellis-server-static", Version: "v1"},
 		NewStaticServer,
 	)
 }

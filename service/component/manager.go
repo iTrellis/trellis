@@ -23,7 +23,8 @@ import (
 
 // Manager local router
 type Manager interface {
-	RegisterComponentFunc(service *service.Service, fn NewComponentFunc)
+	RegisterComponentFunc(service *service.Service, fn NewComponentFunc) error
+	RegisterComponent(s *service.Service, cpt Component) error
 	ListComponents() []Describe
 	NewComponent(s *service.Service, opts ...Option) (Component, error)
 	GetComponent(*service.Service) (Component, error)

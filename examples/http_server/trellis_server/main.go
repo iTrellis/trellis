@@ -25,7 +25,7 @@ import (
 
 	"github.com/iTrellis/trellis/cmd"
 	"github.com/iTrellis/trellis/examples/components"
-	"github.com/iTrellis/trellis/server/gin_middlewares"
+	"github.com/iTrellis/trellis/internal/gin_middlewares"
 	"github.com/iTrellis/trellis/service"
 
 	_ "github.com/iTrellis/trellis/server/api"

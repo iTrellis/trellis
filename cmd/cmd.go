@@ -35,6 +35,7 @@ import (
 	"github.com/iTrellis/common/builder"
 	"github.com/iTrellis/common/logger"
 	"github.com/iTrellis/config"
+	"github.com/iTrellis/node"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -62,6 +63,8 @@ type cmd struct {
 	config config.Config
 
 	routesManager routes.Manager
+
+	registries map[string]registry.Registry
 
 	logger logger.Logger
 }
@@ -94,10 +97,14 @@ func (p *cmd) Start() error {
 
 		opts = append(opts,
 			registry.Endpoints(regConfig.Endpoints),
+			registry.ServerAddr(regConfig.ServerAddr),
 			registry.Timeout(regConfig.Timeout),
+			registry.RetryTimes(regConfig.RetryTimes),
 			registry.Context(context.Background()),
 			registry.Logger(p.logger.WithPrefix("registry", regConfig.Name)),
 		)
+
+		// option secure
 
 		p.logger.Debug("new_registry", regConfig.Name, "address", regConfig.ServerAddr)
 
@@ -106,21 +113,27 @@ func (p *cmd) Start() error {
 			return err
 		}
 
-		err = p.routesManager.Router().RegisterRegistry(regConfig.Name, reg)
-		if err != nil {
-			return err
-		}
+		p.registries[rKey] = reg
 
 		for _, w := range regConfig.Watchers {
 			p.logger.Debug("new_registry_watcher", regConfig.Name, "address", regConfig.ServerAddr,
 				"watch_service", w.Service.FullRegistryPath())
-			go p.routesManager.Router().WatchService(
-				regConfig.Name,
+			rCpt, err := routes.NewRemoteComponent(node.NodeTypeRandom, reg,
 				registry.WatchService(w.Service),
-				registry.WatchContext(w.Options),
 				registry.WatchLogger(
 					p.logger.WithPrefix("registry", regConfig.Name, "watcher", w.Service.FullRegistryPath())),
 			)
+			if err != nil {
+				return err
+			}
+
+			rCpt.Init(component.Caller(p.routesManager),
+				component.Config(w.Options.ToConfig()),
+				component.Logger(p.logger.WithPrefix("remote_component", w.Service.TrellisPath())))
+
+			if err = p.routesManager.CompManager().RegisterComponent(&w.Service, rCpt); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -159,11 +172,14 @@ func (p *cmd) Start() error {
 
 		p.logger.Debug("regist service for registry", serviceConf)
 
-		if err := p.routesManager.Router().RegisterService(
-			serviceConf.Registry.Name,
-			&serviceConf.Service,
-			opts...,
-		); err != nil {
+		reg, ok := p.registries[serviceConf.Registry.Name]
+		if !ok {
+			return fmt.Errorf("not found registry: %s", serviceConf.Registry.Name)
+		}
+
+		err := reg.Register(&serviceConf.Service, opts...)
+
+		if err != nil {
 			return err
 		}
 	}
@@ -197,14 +213,12 @@ func (p *cmd) Init(opts ...Option) (err error) {
 		p.config = c
 	}
 
-	if p.config == nil {
-		return nil
-	}
-
 	loggerConfig := &configure.Logger{}
 
-	if err := p.config.ToObject("project.logger", loggerConfig); err != nil {
-		return err
+	if p.config != nil {
+		if err := p.config.ToObject("project.logger", loggerConfig); err != nil {
+			return err
+		}
 	}
 
 	if loggerConfig.Level == nil {
@@ -235,7 +249,6 @@ func (p *cmd) Init(opts ...Option) (err error) {
 
 	p.routesManager = routes.NewManager(
 		routes.CompManager(DefaultCompManager),
-		routes.WithRouter(routes.NewRoutes(p.logger.WithPrefix("component", "routes"))),
 		routes.Logger(p.logger.WithPrefix("component", "routes_manager")),
 	)
 	return
@@ -281,7 +294,8 @@ func New(opts ...Option) (Cmd, error) {
 	builder.Show()
 
 	cmd := &cmd{
-		app: cli.NewApp(),
+		app:        cli.NewApp(),
+		registries: make(map[string]registry.Registry),
 	}
 
 	if err := cmd.Init(opts...); err != nil {
@@ -293,7 +307,7 @@ func New(opts ...Option) (Cmd, error) {
 			Name:  "version",
 			Usage: "print project version",
 			Action: func(ctx *cli.Context) error {
-				println(version.Version())
+				fmt.Println(version.Version())
 				return nil
 			},
 		},
@@ -301,7 +315,7 @@ func New(opts ...Option) (Cmd, error) {
 			Name:  "build_info",
 			Usage: "print project build info",
 			Action: func(ctx *cli.Context) error {
-				println(version.BuildInfo())
+				fmt.Println(version.BuildInfo())
 				return nil
 			},
 		},

@@ -18,57 +18,29 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
-	"flag"
-	"fmt"
 	"log"
-	"time"
 
 	"github.com/iTrellis/trellis/cmd"
-	"github.com/iTrellis/trellis/examples/components"
 	"github.com/iTrellis/trellis/service"
-	"github.com/iTrellis/trellis/service/message"
+
+	"github.com/iTrellis/trellis/examples/components"
+	_ "github.com/iTrellis/trellis/server/http"
 )
 
-var config string
-
-func init() {
-	flag.StringVar(&config, "config", "config.yaml", "config path")
-}
 func main() {
-
 	c, err := cmd.New()
 	if err != nil {
 		log.Fatalln(err)
 	}
-	if err := c.Init(cmd.ConfigFile(config)); err != nil {
+	if err := c.Init(cmd.ConfigFile("config.yaml")); err != nil {
 		log.Fatalln(err)
 	}
 
-	// Explicit to register component function
-	cmd.DefaultCompManager.RegisterComponentFunc(&service.Service{Name: "component_ping", Version: "v1"},
+	cmd.DefaultCompManager.RegisterComponentFunc(
+		&service.Service{Name: "component_ping", Version: "v1"},
 		components.NewPing)
 
-	if err := c.Start(); err != nil {
+	if err := c.BlockRun(); err != nil {
 		log.Fatalln(err)
-	}
-
-	defer c.Stop()
-
-	time.Sleep(time.Second)
-
-	cpt, err := cmd.DefaultCompManager.GetComponent(&service.Service{Name: "component_ping", Version: "v1"})
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	msg := message.NewMessage()
-	msg.SetTopic("etcd_ping")
-	for i := 0; i < 60; i++ {
-		time.Sleep(time.Second)
-		resp, err := cpt.Route(msg)
-		if err != nil {
-			panic(err)
-		}
-		fmt.Println("get response:", resp)
 	}
 }
