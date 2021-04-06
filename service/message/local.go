@@ -18,13 +18,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package message
 
 import (
+	"strings"
+
 	"github.com/iTrellis/trellis/service"
 	"github.com/iTrellis/trellis/service/codec"
 	"github.com/iTrellis/trellis/service/codec/json"
-)
-
-const (
-	ApplicationJSON = "application/json"
 )
 
 var (
@@ -36,7 +34,7 @@ var (
 		// "application/json-rpc":     jsonrpc.NewCodec,
 		// "application/proto-rpc":    protorpc.NewCodec,
 		// "application/octet-stream": raw.NewCodec,
-		ApplicationJSON: json.NewCodec,
+		service.MIMEApplicationJSON: json.NewCodec,
 	}
 )
 
@@ -63,16 +61,21 @@ func NewMessage(opts ...Option) Message {
 }
 
 func (p *local) contentType() string {
-	ct := ApplicationJSON
 	header := p.payload.GetHeader()
 	if header == nil {
-		return ct
+		return service.MIMEApplicationJSON
 	}
 	v, ok := header["Content-Type"]
 	if ok {
 		return v
 	}
-	return ct
+	cts := strings.Split(v, ";")
+	switch len(cts) {
+	case 0:
+		return service.MIMEApplicationJSON
+	default:
+		return cts[0]
+	}
 }
 
 func (p *local) Codec() codec.Codec {
@@ -80,9 +83,7 @@ func (p *local) Codec() codec.Codec {
 		return p.codec
 	}
 
-	ct := p.contentType()
-
-	fn := DefaultCodecs[ct]
+	fn := DefaultCodecs[p.contentType()]
 	if fn == nil {
 		return nil
 	}
