@@ -66,8 +66,8 @@ func (p *local) contentType() string {
 		return service.MIMEApplicationJSON
 	}
 	v, ok := header["Content-Type"]
-	if ok {
-		return v
+	if !ok {
+		return service.MIMEApplicationJSON
 	}
 	cts := strings.Split(v, ";")
 	switch len(cts) {
