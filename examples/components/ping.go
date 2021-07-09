@@ -41,7 +41,7 @@ func (p *ping) Route(msg message.Message) (interface{}, error) {
 	switch msg.Topic() {
 	case "ping":
 		return p.opts.Caller.CallComponent(message.NewMessage(
-			message.Service(service.Service{Name: "component_pong", Version: "v1", Topic: "ping"}),
+			message.Service(&service.Service{Name: "component_pong", Version: "v1", Topic: "ping"}),
 		))
 	case "etcd_ping":
 		return nil, nil

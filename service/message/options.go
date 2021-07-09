@@ -37,8 +37,8 @@ func MessagePayload(payload *Payload) Option {
 	}
 }
 
-func Service(s service.Service) Option {
+func Service(s *service.Service) Option {
 	return func(o *Options) {
-		o.Service = &s
+		o.Service = s
 	}
 }

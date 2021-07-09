@@ -316,7 +316,7 @@ func (p *httpServer) serve(gCtx *gin.Context) {
 	}
 
 	msg := message.NewMessage(message.Service(
-		service.Service{
+		&service.Service{
 			Domain:  api.ServiceDomain,
 			Name:    api.ServiceName,
 			Version: api.ServiceVersion,

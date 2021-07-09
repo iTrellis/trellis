@@ -18,6 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package message
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/iTrellis/trellis/service"
@@ -60,6 +61,11 @@ func NewMessage(opts ...Option) Message {
 	return m
 }
 
+func (p *local) Codec() codec.Codec {
+	codec, _ := p.getCodec()
+	return codec
+}
+
 func (p *local) contentType() string {
 	header := p.payload.GetHeader()
 	if header == nil {
@@ -78,18 +84,19 @@ func (p *local) contentType() string {
 	}
 }
 
-func (p *local) Codec() codec.Codec {
+func (p *local) getCodec() (codec.Codec, error) {
 	if p.codec != nil {
-		return p.codec
+		return p.codec, nil
 	}
 
-	fn := DefaultCodecs[p.contentType()]
+	ct := p.contentType()
+	fn := DefaultCodecs[ct]
 	if fn == nil {
-		return nil
+		return nil, fmt.Errorf("unknown content-type: %s", ct)
 	}
 
 	p.codec = fn()
-	return p.codec
+	return p.codec, nil
 }
 
 func (p *local) GetPayload() *Payload {
@@ -104,17 +111,23 @@ func (p *local) Topic() string {
 	return p.service.GetTopic()
 }
 
-func (p *local) SetBody(v interface{}) (err error) {
-	codec := p.Codec()
+func (p *local) SetBody(v interface{}) error {
+	codec, err := p.getCodec()
+	if err != nil {
+		return err
+	}
 	if p.payload == nil {
 		p.payload = &Payload{}
 	}
 	p.payload.Body, err = codec.Marshal(v)
-	return
+	return err
 }
 
 func (p *local) ToObject(v interface{}) error {
-	codec := p.Codec()
+	codec, err := p.getCodec()
+	if err != nil {
+		return err
+	}
 	return codec.Unmarshal(p.payload.GetBody(), v)
 }
 
@@ -126,16 +139,8 @@ func (p *local) SetTopic(topic string) {
 }
 
 func (p *local) ToRemoteMessage() *RemoteMessage {
-	msg := &RemoteMessage{
-		Domain:  p.service.GetDomain(),
-		Name:    p.service.GetName(),
-		Version: p.service.GetVersion(),
-		Topic:   p.service.GetTopic(),
-		Payload: Payload{},
+	return &RemoteMessage{
+		Service: p.service,
+		Payload: p.payload,
 	}
-
-	if p.payload != nil {
-		msg.Payload = *p.payload
-	}
-	return msg
 }

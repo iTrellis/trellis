@@ -34,29 +34,21 @@ type Message interface {
 	ToRemoteMessage() *RemoteMessage
 }
 
+// Caller caller for calling component or server
+type Caller interface {
+	CallComponent(Message) (interface{}, error)
+}
+
 // RemoteMessage remote message from two inner servers
 type RemoteMessage struct {
-	Domain  string `yaml:"domain" json:"domain"`
-	Name    string `yaml:"name" json:"name"`
-	Version string `yaml:"version" json:"version"`
-	Topic   string `yaml:"topic" json:"topic"`
-	Payload `yaml:"inline" json:"inline"`
+	*service.Service `yaml:"service" json:"service"`
+	*Payload         `yaml:"payload" json:"payload"`
 }
 
 func (p *RemoteMessage) ToMessage() Message {
 	return NewMessage(
-		MessagePayload(&p.Payload),
-		Service(service.Service{
-			Domain:  p.Domain,
-			Name:    p.Name,
-			Version: p.Version,
-			Topic:   p.Topic,
-		}))
-}
-
-// Caller caller for calling component or server
-type Caller interface {
-	CallComponent(Message) (interface{}, error)
+		MessagePayload(p.Payload),
+		Service(p.Service))
 }
 
 func (p *Payload) Set(key, value string) {
