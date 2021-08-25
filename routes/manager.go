@@ -102,7 +102,7 @@ func (p *manager) Start() (err error) {
 			p.logger.Error("failed_start_component", "component", cpt.Name, "err", err.Error())
 			return
 		}
-		p.logger.Error("start_component", "component", cpt.Name, "result", "ok")
+		p.logger.Info("start_component", "component", cpt.Name, "result", "ok")
 	}
 
 	return nil

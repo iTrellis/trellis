@@ -193,24 +193,39 @@ func (p *cmd) Init(opts ...Option) (err error) {
 	}
 
 	if p.options.configFile != "" {
-		r, err := config.NewSuffixReader(config.ReaderOptionFilename(p.options.configFile))
+		p.config, err = config.NewConfig(p.options.configFile)
+		if err != nil {
+			return
+		}
+	} else if p.options.config != nil {
+		p.config, err = config.NewConfigOptions(config.OptionStruct(config.ReaderTypeYAML, p.options.config))
 		if err != nil {
 			return err
 		}
-
-		cfg := &configure.Configure{}
-		if err = r.Read(cfg); err != nil {
-			return err
-		}
-
-		p.options.config = cfg
-	} else if p.options.config != nil {
-
 	} else {
 		return nil
 	}
 
-	loggerConfig := p.options.config.Project.Logger
+	err = p.initLogger()
+	if err != nil {
+		return err
+	}
+
+	p.logger.Debug("start_initial", "cammand_initial", "new manager")
+
+	p.routesManager = routes.NewManager(
+		routes.CompManager(DefaultCompManager),
+		routes.Logger(p.logger.With("component", "routes_manager")),
+	)
+	return
+}
+
+func (p *cmd) initLogger() error {
+	var loggerConfig logger.LogConfig
+	err := p.config.ToObject("project.logger", &loggerConfig)
+	if err != nil {
+		return err
+	}
 
 	var loggerOptions []logger.Option
 
@@ -239,29 +254,16 @@ func (p *cmd) Init(opts ...Option) (err error) {
 	}
 
 	p.logger = zLogger
-
-	p.logger.Debug("start_initial")
-
-	c, err := config.NewConfigOptions(config.OptionStruct(config.ReaderTypeYAML, p.options.config))
-	if err != nil {
-		p.logger.Error("initial_failed", "err", err)
-		return err
-	}
-
-	p.config = c
-
-	p.routesManager = routes.NewManager(
-		routes.CompManager(DefaultCompManager),
-		routes.Logger(p.logger.With("component", "routes_manager")),
-	)
-	return
+	return nil
 }
 
 func (p *cmd) Stop() error {
+	if p.routesManager == nil {
+		return nil
+	}
 	if err := p.routesManager.Stop(); err != nil {
 		return err
 	}
-
 	return nil
 }
 
