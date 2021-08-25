@@ -87,7 +87,6 @@ func (p *Handler) init() error {
 			engine.GET(staticPath, func(c *gin.Context) {
 				c.Redirect(http.StatusFound, staticRedirect)
 			})
-
 			engine.Static(staticRedirect, staticRoot)
 		} else {
 			engine.Static(staticPath, staticRoot)
@@ -124,7 +123,7 @@ func (p *Handler) Start() error {
 		}
 
 		if err != http.ErrServerClosed {
-			p.options.Logger.Error("msg", "http_server_closed", "error", err.Error())
+			p.options.Logger.Error("http_server_closed", "err", err.Error())
 		}
 
 		ch <- err

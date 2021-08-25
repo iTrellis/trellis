@@ -210,13 +210,13 @@ func (p *etcdRegistry) Register(s *service.Service, opts ...registry.RegisterOpt
 		options:     options,
 	}
 
-	p.options.Logger.Debug("msg", "etd_register", "fullRegPath", fullRegPath, "Service", s)
+	p.options.Logger.Debug("etd_register", "fullRegPath", fullRegPath, "Service", s)
 
 	go func(wr *worker) {
 		var count uint32
 		for {
 			if err := p.registerServiceNode(wr); err != nil {
-				p.options.Logger.Warn("msg", "failed_and_retry_regsiter", "worker", wr, "error", err.Error(),
+				p.options.Logger.Warn("failed_and_retry_regsiter", "worker", wr, "error", err.Error(),
 					"retry_times", count, "max_retry_times", p.options.RetryTimes)
 				if p.options.RetryTimes == 0 {
 					continue
@@ -227,7 +227,7 @@ func (p *etcdRegistry) Register(s *service.Service, opts ...registry.RegisterOpt
 				count++
 				continue
 			}
-			p.options.Logger.Debug("msg", "retry_regsiter", "worker", wr,
+			p.options.Logger.Debug("retry_regsiter", "worker", wr,
 				"retry_times", count, "max_retry_times", p.options.RetryTimes)
 
 			count = 0
@@ -257,7 +257,7 @@ func (p *etcdRegistry) registerServiceNode(wr *worker) error {
 	leaseID, ok := p.leases[wr.fullRegPath]
 	p.RUnlock()
 
-	p.options.Logger.Debug("msg", "register_service_node", "ok", ok, "service", wr.service)
+	p.options.Logger.Debug("register_service_node", "result", ok, "service", wr.service)
 
 	if !ok {
 		// minimum lease TTL is ttl-second
@@ -336,7 +336,7 @@ func (p *etcdRegistry) registerServiceNode(wr *worker) error {
 		putOpts = append(putOpts, clientv3.WithLease(lgr.ID))
 	}
 
-	p.options.Logger.Debug("msg", "put service into etcd", "path", wr.fullRegPath, "service", wr.service)
+	p.options.Logger.Debug("put_service_into_etcd", "path", wr.fullRegPath, "service", wr.service)
 
 	if _, err = p.client.Put(ctx, wr.fullRegPath, encode(wr.service), putOpts...); err != nil {
 		return err

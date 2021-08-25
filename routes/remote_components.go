@@ -87,7 +87,7 @@ func (p *remoteComponents) Start() error {
 		for {
 			result, err := w.Next()
 			if err != nil {
-				p.options.Logger.Warn("msg", "failed_get_next_node", "error", err)
+				p.options.Logger.Warn("failed_get_next_node", "err", err)
 				return
 			}
 

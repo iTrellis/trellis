@@ -158,7 +158,7 @@ func (p *httpServer) Start() error {
 
 		if err != nil {
 			if err != http.ErrServerClosed {
-				p.options.Logger.Error("msg", "failed_listen_and_serve", "error", err.Error())
+				p.options.Logger.Error("failed_listen_and_serve", "err", err.Error())
 				log.Fatalln(err)
 			}
 		}
@@ -198,7 +198,7 @@ func (p *httpServer) serve(ctx *gin.Context) {
 		r.Msg = fmt.Sprintf("bad request: %s", err.Error())
 		r.Namespace = s.TrellisPath()
 		ctx.JSON(http.StatusBadRequest, r)
-		p.options.Logger.Error("msg", "get_raw_data", "err", err)
+		p.options.Logger.Error("get_raw_data", "err", err)
 		return
 	}
 

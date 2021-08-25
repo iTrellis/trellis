@@ -36,7 +36,6 @@ import (
 	"github.com/iTrellis/common/logger"
 	"github.com/iTrellis/config"
 	"github.com/iTrellis/node"
-	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
@@ -101,12 +100,12 @@ func (p *cmd) Start() error {
 			registry.Timeout(regConfig.Timeout),
 			registry.RetryTimes(regConfig.RetryTimes),
 			registry.Context(context.Background()),
-			registry.Logger(p.logger.WithPrefix("registry", regConfig.Name)),
+			registry.Logger(p.logger.With("registry", regConfig.Name)),
 		)
 
 		// option secure
 
-		p.logger.Debug("new_registry", regConfig.Name, "address", regConfig.ServerAddr)
+		p.logger.Debug("new_registry", "name", regConfig.Name, "address", regConfig.ServerAddr)
 
 		reg, err := fn(opts...)
 		if err != nil {
@@ -116,12 +115,12 @@ func (p *cmd) Start() error {
 		p.registries[rKey] = reg
 
 		for _, w := range regConfig.Watchers {
-			p.logger.Debug("new_registry_watcher", regConfig.Name, "address", regConfig.ServerAddr,
+			p.logger.Debug("new_registry_watcher", "name", regConfig.Name, "address", regConfig.ServerAddr,
 				"watch_service", w.Service.FullRegistryPath())
 			rCpt, err := routes.NewRemoteComponent(node.NodeTypeRandom, reg,
 				registry.WatchService(w.Service),
 				registry.WatchLogger(
-					p.logger.WithPrefix("registry", regConfig.Name, "watcher", w.Service.FullRegistryPath())),
+					p.logger.With("registry", regConfig.Name, "watcher", w.Service.FullRegistryPath())),
 			)
 			if err != nil {
 				return err
@@ -129,7 +128,7 @@ func (p *cmd) Start() error {
 
 			rCpt.Init(component.Caller(p.routesManager),
 				component.Config(w.Options.ToConfig()),
-				component.Logger(p.logger.WithPrefix("remote_component", w.Service.TrellisPath())))
+				component.Logger(p.logger.With("remote_component", w.Service.TrellisPath())))
 
 			if err = p.routesManager.CompManager().RegisterComponent(&w.Service, rCpt); err != nil {
 				return err
@@ -147,14 +146,14 @@ func (p *cmd) Start() error {
 			return err
 		}
 
-		p.logger.Debug("new_component", serviceConf.Service.TrellisPath())
+		p.logger.Debug("new_component", "component", serviceConf.Service.TrellisPath())
 		if _, err := p.routesManager.CompManager().NewComponent(
 			&serviceConf.Service,
 			component.Caller(p.routesManager),
 			component.Config(serviceConf.Options.ToConfig()),
-			component.Logger(p.logger.WithPrefix("component", serviceConf.Service.TrellisPath())),
+			component.Logger(p.logger.With("component", serviceConf.Service.TrellisPath())),
 		); err != nil {
-			p.logger.Error("new_component", serviceConf.Service.TrellisPath(), "err", err.Error())
+			p.logger.Error("new_component", "component", serviceConf.Service.TrellisPath(), "err", err.Error())
 			return err
 		}
 
@@ -170,7 +169,7 @@ func (p *cmd) Start() error {
 			registry.RegisterHeartbeat(serviceConf.Registry.Heartbeat),
 		)
 
-		p.logger.Debug("regist service for registry", serviceConf)
+		p.logger.Debug("regist service for registry", "config", serviceConf)
 
 		reg, ok := p.registries[serviceConf.Registry.Name]
 		if !ok {
@@ -188,68 +187,72 @@ func (p *cmd) Start() error {
 }
 
 func (p *cmd) Init(opts ...Option) (err error) {
-	options := &Options{}
+
 	for _, o := range opts {
-		o(options)
+		o(&p.options)
 	}
 
-	if options.configFile != "" {
-		p.options.configFile = options.configFile
-
-		c, err := config.NewConfig(p.options.configFile)
+	if p.options.configFile != "" {
+		r, err := config.NewSuffixReader(config.ReaderOptionFilename(p.options.configFile))
 		if err != nil {
 			return err
 		}
 
-		p.config = c
-	} else if options.config != nil {
-		p.options.config = options.config
-
-		c, err := config.NewConfigOptions(config.OptionStruct(config.ReaderTypeYAML, p.options.config))
-		if err != nil {
+		cfg := &configure.Configure{}
+		if err = r.Read(cfg); err != nil {
 			return err
 		}
 
-		p.config = c
+		p.options.config = cfg
+	} else if p.options.config != nil {
+
+	} else {
+		return nil
 	}
 
-	loggerConfig := &configure.Logger{}
+	loggerConfig := p.options.config.Project.Logger
 
-	if p.config != nil {
-		if err := p.config.ToObject("project.logger", loggerConfig); err != nil {
-			return err
-		}
+	var loggerOptions []logger.Option
+
+	if loggerConfig.Caller {
+		loggerOptions = append(loggerOptions, logger.Caller())
+		loggerOptions = append(loggerOptions, logger.CallerSkip(1))
 	}
 
-	if loggerConfig.Level == nil {
-		loggerConfig.Level = &configure.DefaultLevel
+	if loggerConfig.EncoderConfig != nil {
+		loggerOptions = append(loggerOptions, logger.EncoderConfig(loggerConfig.EncoderConfig))
 	}
 
-	if loggerConfig.StackSkip == nil {
-		loggerConfig.StackSkip = &configure.DefaultStackSkip
+	if loggerConfig.StackTrace {
+		loggerOptions = append(loggerOptions, logger.StackTrace())
+	}
+	if loggerConfig.Encoding == "" {
+		loggerConfig.Encoding = "json"
+	}
+	loggerOptions = append(loggerOptions, logger.Encoding(loggerConfig.Encoding))
+	loggerOptions = append(loggerOptions, logger.LogLevel(loggerConfig.Level))
+	loggerOptions = append(loggerOptions, logger.LogFileOptions(&loggerConfig.FileOptions))
+
+	zLogger, err := logger.NewLogger(loggerOptions...)
+	if err != nil {
+		return err
 	}
 
-	switch loggerConfig.Type {
-	case "file":
-		p.logger, err = logger.NewFileLogger()
-		if err != nil {
-			return err
-		}
-	case "logrus":
-		p.logger = logger.NewLogrusLogger(logrus.New(), logger.LogrusLevel(*loggerConfig.Level))
-	case "", "std":
-		fallthrough
-	default:
-		p.logger = logger.NewStdLogger(logger.STDWriter(os.Stderr), logger.STDLevel(*loggerConfig.Level))
+	p.logger = zLogger
+
+	p.logger.Debug("start_initial")
+
+	c, err := config.NewConfigOptions(config.OptionStruct(config.ReaderTypeYAML, p.options.config))
+	if err != nil {
+		p.logger.Error("initial_failed", "err", err)
+		return err
 	}
 
-	p.logger = p.logger.WithPrefix("caller", logger.RuntimeCaller(*loggerConfig.StackSkip))
-
-	p.logger.Debug("msg", "initial", "config_file", options.configFile, "configs", options.config)
+	p.config = c
 
 	p.routesManager = routes.NewManager(
 		routes.CompManager(DefaultCompManager),
-		routes.Logger(p.logger.WithPrefix("component", "routes_manager")),
+		routes.Logger(p.logger.With("component", "routes_manager")),
 	)
 	return
 }
@@ -278,9 +281,7 @@ func (p *cmd) BlockRun() error {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGTERM, syscall.SIGINT, syscall.SIGKILL)
 
-	select {
-	case <-ch:
-	}
+	<-ch
 
 	return p.Stop()
 }

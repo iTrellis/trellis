@@ -33,14 +33,14 @@ func StatFunc(logger logger.Logger) gin.HandlerFunc {
 		api := c.Request.Header.Get("X-API")
 		reqTime := time.Now().UnixNano() / int64(time.Microsecond)
 
-		logger.Info("msg", "request_info", "request_id", reqID, "url", c.Request.URL.String(),
+		logger.Info("msg", "audit", "position", "request", "request_id", reqID, "url", c.Request.URL.String(),
 			"method", c.Request.Method, "X-API", api, "request_time", reqTime)
 
 		c.Next()
 
 		respTime := time.Now().UnixNano() / int64(time.Microsecond)
 
-		logger.Info("msg", "api_cost(us)", "request_id", reqID, "url", c.Request.URL.String(),
+		logger.Info("msg", "audit", "position", "response", "request_id", reqID, "url", c.Request.URL.String(),
 			"method", c.Request.Method, "X-API", api,
 			"request_time", reqTime, "response_time", respTime, "cost_time", respTime-reqTime)
 	}

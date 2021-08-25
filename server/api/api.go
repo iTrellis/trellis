@@ -44,7 +44,7 @@ func (*API) TableName() string {
 func (p *httpServer) syncAPIs(s *service.Service) {
 	for {
 		syncID := uuid.NewString()
-		p.options.Logger.Info("msg", "start_sync_apis", "sync", syncID, "service", s)
+		p.options.Logger.Info("start_sync_apis", "sync", syncID, "service", s)
 
 		parmas := map[string]interface{}{"`status`": "normal"}
 
@@ -62,7 +62,7 @@ func (p *httpServer) syncAPIs(s *service.Service) {
 
 		var apis []*API
 		if err := p.apiEngine.Where(parmas).Find(&apis); err != nil {
-			p.options.Logger.Error("msg", "sync_apis_failed", "sync", syncID, "err", err.Error())
+			p.options.Logger.Error("sync_apis_failed", "sync", syncID, "err", err.Error())
 			<-p.ticker.C
 			continue
 		}
@@ -71,14 +71,14 @@ func (p *httpServer) syncAPIs(s *service.Service) {
 		mapAPIs := make(map[string]*API, lenAPI)
 
 		for i := 0; i < lenAPI; i++ {
-			p.options.Logger.Debug("msg", "add_new_api", "api", apis[i])
+			p.options.Logger.Debug("add_new_api", "api", apis[i])
 			mapAPIs[apis[i].Name] = apis[i]
 		}
 
 		p.syncer.Lock()
 		p.apis = mapAPIs
 		p.syncer.Unlock()
-		p.options.Logger.Info("msg", "end_sync_apis", "sync", syncID, "service", s)
+		p.options.Logger.Info("end_sync_apis", "sync", syncID, "service", s)
 
 		<-p.ticker.C
 	}

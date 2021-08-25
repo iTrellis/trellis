@@ -60,7 +60,7 @@ func main() {
 var defHandler *compHandler
 
 func customHandler(c *gin.Context) {
-	defHandler.options.Logger.Info("msg", "custom_handler")
+	defHandler.options.Logger.Info("custom_handler")
 	c.JSON(200, map[string]string{"message": defHandler.Response})
 }
 

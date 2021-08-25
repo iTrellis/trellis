@@ -130,6 +130,7 @@ func (p *httpServer) init() error {
 	switch typ {
 	case "file":
 		apis := apisConf.GetValuesConfig(typ)
+
 		for _, apiKey := range apis.GetKeys() {
 			apiConf := apisConf.GetValuesConfig("file." + apiKey)
 			if apiConf == nil {
@@ -214,7 +215,7 @@ func (p *httpServer) init() error {
 	}
 
 	for _, v := range handlers {
-		p.options.Logger.Info("msg", "start_customer_handler", "name", v.Name, "path", v.URLPath, "method", v.Method)
+		p.options.Logger.Info("start_customer_handler", "name", v.Name, "path", v.URLPath, "method", v.Method)
 		engine.Handle(v.Method, v.URLPath, v.Func)
 	}
 
@@ -251,7 +252,7 @@ func (p *httpServer) Start() error {
 
 		if err != nil {
 			if err != http.ErrServerClosed {
-				p.options.Logger.Error("msg", "failed_listen_and_serve", "error", err.Error())
+				p.options.Logger.Error("failed_listen_and_serve", "err", err.Error())
 				log.Fatalln(err)
 			}
 		}
@@ -290,7 +291,7 @@ func (p *httpServer) serve(gCtx *gin.Context) {
 		r.Msg = "api not found"
 		r.Namespace = "trellis"
 		gCtx.JSON(http.StatusBadRequest, r)
-		p.options.Logger.Error("msg", "api_not_found", "request_id", reqID, "api_name", apiName, "client_ip", clientIP)
+		p.options.Logger.Error("api_not_found", "request_id", reqID, "api_name", apiName, "client_ip", clientIP)
 		return
 	}
 
@@ -300,7 +301,7 @@ func (p *httpServer) serve(gCtx *gin.Context) {
 		r.Msg = fmt.Sprintf("bad request: %s", err.Error())
 		r.Namespace = "trellis"
 		gCtx.JSON(http.StatusBadRequest, r)
-		p.options.Logger.Error("msg", "get_raw_data", "request_id", r.TraceID, "api_name", apiName, "client_ip", clientIP, "err", err)
+		p.options.Logger.Error("get_raw_data", "request_id", r.TraceID, "api_name", apiName, "client_ip", clientIP, "err", err)
 		return
 	}
 
@@ -346,7 +347,7 @@ func (p *httpServer) serve(gCtx *gin.Context) {
 		r.Namespace = "trellis"
 	}
 
-	p.options.Logger.Error("msg", "call_server_failed", "request_id", r.TraceID, "api_name", apiName, "client_ip", clientIP, "err", r)
+	p.options.Logger.Error("call_server_failed", "request_id", r.TraceID, "api_name", apiName, "client_ip", clientIP, "err", r)
 	gCtx.JSON(200, r)
 }
 

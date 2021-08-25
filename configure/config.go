@@ -17,12 +17,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package configure
 
+import "github.com/iTrellis/common/logger"
+
 type Configure struct {
 	Project Project `json:"project" yaml:"project"`
 }
 
 type Project struct {
-	Logger     *Logger              `json:"logger" yaml:"logger"`
+	Logger     logger.LogConfig     `json:"logger" yaml:"logger"`
 	Registries map[string]*Registry `json:"registries" yaml:"registries"`
 	Services   map[string]*Service  `json:"services" yaml:"services"`
 }

@@ -1,4 +1,12 @@
 project:
+  logger:
+    level: 1
+    caller_skip: 6
+    caller: true
+    # stack_trace: true
+    std_printers:
+      - stderr
+    filename: cs.testlog
   services:
     custom-component_handler-v1:
       domain: custom
@@ -11,7 +19,7 @@ project:
         http:
           postapi: "/v1"
           address: ":8080"
-        gin_mode: debug
+        gin_mode: release
         apis:
           type: file ## default file | mysql
           file:
